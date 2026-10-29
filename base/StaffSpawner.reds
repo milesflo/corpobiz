@@ -34,7 +34,7 @@ public class StaffSpawner {
       return;
     }
 
-    for mod in CorpoBizRegistry.All() {
+    for mod in CorpoBizRegistry.All(game) {
       let def = mod.Def();
       let dist = Vector4.Distance(player.GetWorldPosition(), def.terminalPosition);
       if dist < ProximityRadius() {

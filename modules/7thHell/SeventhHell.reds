@@ -104,3 +104,17 @@ public class SeventhHellModule extends BizModule {
     return angles.ToQuat();
   }
 }
+
+// Self-registration: base/Registry.reds never names this module, so this
+// module is responsible for announcing itself. @wrapMethod is designed to
+// let independent files each wrap the same vanilla method without
+// conflict (base/StaffSpawner.reds wraps this exact method too, for its
+// own unrelated purpose) -- wrappedMethod() chains to whatever else is
+// also wrapping it, vanilla behavior included.
+@wrapMethod(ScriptedPuppet)
+protected cb func OnGameAttached() -> Void {
+  wrappedMethod();
+  if this.IsPlayer() {
+    CorpoBizRegistry.Register(this.GetGame(), new SeventhHellModule());
+  }
+}

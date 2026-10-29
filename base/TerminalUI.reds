@@ -34,7 +34,8 @@ public class TerminalUI {
 
   public static func FindBiz(controller: ref<ComputerInkGameController>) -> ref<BizModule> {
     let ownerPos = controller.GetOwner().GetWorldPosition();
-    return CorpoBizRegistry.FindByPosition(ownerPos, TerminalUI.TerminalMatchRadius());
+    let game = controller.GetOwner().GetGame();
+    return CorpoBizRegistry.FindByPosition(game, ownerPos, TerminalUI.TerminalMatchRadius());
   }
 
   public static func HandleSelection(game: GameInstance, player: ref<GameObject>, mod: ref<BizModule>, documentID: Int32) -> Void {
