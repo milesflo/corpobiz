@@ -20,7 +20,7 @@ public class CorpoBiz {
     if trans.RemoveItem(player, MarketSystem.Money(), def.purchasePrice) {
       CorpoBizState.SetOwned(game, def.id);
       for resource in def.inputs {
-        CorpoBizState.SetStock(game, def.id, resource.id, 100);
+        CorpoBizState.SetStock(game, def.id, resource.Id(), 100);
       }
     }
   }
@@ -90,7 +90,7 @@ public class CorpoBiz {
     let hiredRevenuePerDay = CorpoBiz.HiredRevenuePerDay(game, def);
 
     if CorpoBiz.HasPrimaryResource(def) {
-      let primaryResource = CorpoBiz.PrimaryResource(def).id;
+      let primaryResource = CorpoBiz.PrimaryResource(def).Id();
       let stock = CorpoBizState.GetStock(game, def.id, primaryResource);
       if activeRoles > 0 && stock > 0 {
         let earned = Cast<Int32>(Cast<Float>(hiredRevenuePerDay) * (Cast<Float>(stock) / 100.0) * deltaDays);
@@ -116,12 +116,11 @@ public class CorpoBiz {
   // The first declared input resource (7th Hell has exactly one, "Alcohol";
   // a business with multiple inputs would need its own UI/logic beyond
   // this framework stub).
-  public static func PrimaryResource(def: BizDef) -> BizResource {
+  public static func PrimaryResource(def: BizDef) -> ref<Resource> {
     for resource in def.inputs {
       return resource;
     }
-    let none: BizResource;
-    return none;
+    return null;
   }
 
   private static func CurrentTimestamp(game: GameInstance) -> Int32 {

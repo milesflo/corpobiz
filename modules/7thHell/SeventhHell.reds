@@ -32,11 +32,13 @@ public class SeventhHellModule extends BizModule {
     return p;
   }
 
-  private func AlcoholResource() -> BizResource {
-    let r: BizResource;
-    r.id = n"alcohol";
-    r.displayName = "Alcohol";
-    return r;
+  // quantityPerDay isn't consumed by any recipe-execution logic yet
+  // (CorpoBiz.Settle still uses the older stock-percentage decay formula,
+  // keyed off stockDecayPerDayPerActiveRole, not a per-resource rate) --
+  // 24/day (one drink an hour per active shift) is illustrative, not yet
+  // load-bearing, until Settle catches up to the Resource model.
+  private func AlcoholResource() -> ref<Resource> {
+    return SimpleResource.Create(n"alcohol", "Alcohol", 24);
   }
 
   // array<CName> works fine (native element type); array<RoleDef>-shaped

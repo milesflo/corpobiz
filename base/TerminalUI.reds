@@ -95,7 +95,7 @@ public class TerminalUI {
       return;
     }
     if documentID == 2 && CorpoBiz.HasPrimaryResource(def) {
-      CorpoBiz.TryRestock(game, player, def, CorpoBiz.PrimaryResource(def).id);
+      CorpoBiz.TryRestock(game, player, def, CorpoBiz.PrimaryResource(def).Id());
     } else if documentID == 3 {
       CorpoBiz.TryCollect(game, player, def.id);
     }
@@ -233,21 +233,21 @@ public class TerminalUI {
       ];
     }
     let resource = CorpoBiz.PrimaryResource(def);
-    let stock = CorpoBizState.GetStock(game, def.id, resource.id);
+    let stock = CorpoBizState.GetStock(game, def.id, resource.Id());
     return [
       TerminalUI.MakeEntry(0, "stock_back", "<- Back"),
-      TerminalUI.MakeEntry(1, "stock_status", resource.displayName + ": " + ToString(stock) + "%  |  Uncollected cash: $" + ToString(cash)),
+      TerminalUI.MakeEntry(1, "stock_status", resource.DisplayName() + ": " + ToString(stock) + "%  |  Uncollected cash: $" + ToString(cash)),
       TerminalUI.RestockEntry(game, def, resource),
       TerminalUI.CollectEntry(game, def)
     ];
   }
 
-  public static func RestockEntry(game: GameInstance, def: BizDef, resource: BizResource) -> SDocumentThumbnailWidgetPackage {
-    let stock = CorpoBizState.GetStock(game, def.id, resource.id);
+  public static func RestockEntry(game: GameInstance, def: BizDef, resource: ref<Resource>) -> SDocumentThumbnailWidgetPackage {
+    let stock = CorpoBizState.GetStock(game, def.id, resource.Id());
     if stock >= 100 {
-      return TerminalUI.MakeEntry(2, "stock_restock", resource.displayName + " stock full (100%)");
+      return TerminalUI.MakeEntry(2, "stock_restock", resource.DisplayName() + " stock full (100%)");
     }
-    return TerminalUI.MakeEntry(2, "stock_restock", "Restock " + resource.displayName + " +30% -- $" + ToString(def.restockCostPer10Percent * 3));
+    return TerminalUI.MakeEntry(2, "stock_restock", "Restock " + resource.DisplayName() + " +30% -- $" + ToString(def.restockCostPer10Percent * 3));
   }
 
   public static func CollectEntry(game: GameInstance, def: BizDef) -> SDocumentThumbnailWidgetPackage {

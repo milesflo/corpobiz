@@ -54,14 +54,6 @@ public struct BizRoleDef {
   let revenuePerDay: Int32;
 }
 
-// A tradeable good's identity. Actually moving resources between businesses
-// (GTA Online-style supply runs) is future work -- this exists now so
-// BizDef.inputs/outputs has something concrete to name.
-public struct BizResource {
-  let id: CName;
-  let displayName: String;
-}
-
 public struct BizDef {
   let id: CName;
   let displayName: String;
@@ -74,13 +66,17 @@ public struct BizDef {
   // revenue accrual in the generic engine free of any per-business code.
   let roles: array<BizRoleDef>;
 
-  // Resources this business consumes as stock (e.g. 7th Hell's "Alcohol").
-  // Empty for a business with no stock mechanic.
-  let inputs: array<BizResource>;
+  // Resources this business consumes per production cycle (Resource.quantity
+  // is the recipe amount, e.g. 7th Hell's "Alcohol"). Empty for a business
+  // with no stock mechanic. Actually moving a resource between businesses
+  // (GTA Online-style supply runs) is future work -- this is the data shape
+  // that's meant to hang off of.
+  let inputs: array<ref<Resource>>;
 
-  // Resources this business produces, for a future business to consume as
-  // an input. Empty if it only produces cash.
-  let outputs: array<BizResource>;
+  // Resources this business produces per production cycle, for a future
+  // business to consume as an input. Empty if it only produces cash
+  // (money is not a Resource -- see Resource.reds).
+  let outputs: array<ref<Resource>>;
 
   let restockCostPer10Percent: Int32;
   let stockDecayPerDayPerActiveRole: Int32;
