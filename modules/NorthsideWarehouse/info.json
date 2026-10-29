@@ -1,0 +1,8 @@
+{
+  "name": "CorpoBiz - Northside Warehouse",
+  "version": "0.1.0",
+  "description": "Buffer Grain and Alcohol between the other businesses. No real-world site yet.",
+  "dependencies": [
+    { "name": "CorpoBiz - Base", "version": ">=0.1.0" }
+  ]
+}

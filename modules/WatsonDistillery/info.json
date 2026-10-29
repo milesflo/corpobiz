@@ -1,0 +1,8 @@
+{
+  "name": "CorpoBiz - Watson Distillery",
+  "version": "0.1.0",
+  "description": "Turn Grain into Alcohol. No real-world site yet.",
+  "dependencies": [
+    { "name": "CorpoBiz - Base", "version": ">=0.1.0" }
+  ]
+}

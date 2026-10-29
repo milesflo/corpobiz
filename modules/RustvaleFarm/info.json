@@ -1,0 +1,8 @@
+{
+  "name": "CorpoBiz - Rustvale Farm",
+  "version": "0.1.0",
+  "description": "Grow Grain for the rest of the supply chain. No real-world site yet.",
+  "dependencies": [
+    { "name": "CorpoBiz - Base", "version": ">=0.1.0" }
+  ]
+}
