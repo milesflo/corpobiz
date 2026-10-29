@@ -32,9 +32,40 @@ CODEWARE_FILES := \
 
 .ONESHELL:
 SHELL := /bin/bash
-.PHONY: all deploy compile paths-file clean-deploy check-deps
+.PHONY: all deploy compile paths-file clean-deploy check-deps doctor
 
 all: compile
+
+# Environment sanity check -- run this first on a new machine (e.g. after
+# moving this repo to a laptop) before `make compile`, since a missing
+# piece here produces much more confusing errors from deploy/compile.
+doctor:
+	ok=1
+	check() {
+		if eval "$$2"; then
+			echo "  OK   $$1"
+		else
+			echo "  FAIL $$1"
+			ok=0
+		fi
+	}
+	echo "GAME_DIR = $(GAME_DIR)"
+	check "GAME_DIR exists"                 '[ -d "$(GAME_DIR)" ]'
+	check "engine/tools/scc.exe present"    '[ -f "$(GAME_DIR)/engine/tools/scc.exe" ]'
+	check "Codeware Scripts dir present"    '[ -d "$(CODEWARE_SCRIPTS_DIR)" ]'
+	for f in $(CODEWARE_FILES); do
+		check "Codeware file: $$f" '[ -f "$(CODEWARE_SCRIPTS_DIR)/$$f" ]'
+	done
+	check "jq on PATH"                      'command -v jq >/dev/null'
+	check "wine on PATH"                    'command -v wine >/dev/null'
+	check "xdotool on PATH"                 'command -v xdotool >/dev/null'
+	check "flatpak protontricks installed"  'flatpak list 2>/dev/null | grep -qi protontricks'
+	check "DISPLAY is set"                  '[ -n "$$DISPLAY" ]'
+	if [ "$$ok" -ne 1 ]; then
+		echo "doctor: one or more checks failed -- see README for prerequisites"
+		exit 1
+	fi
+	echo "doctor: all checks passed"
 
 # Modules are meant to be distributable independently (a user could obtain
 # modules/7thHell/ without base/, e.g. from a separate download), so the
