@@ -13,18 +13,25 @@ public class CorpoBizState {
     GameInstance.GetQuestsSystem(game).SetFact(CorpoBizState.Key(bizId, "owned"), 1);
   }
 
-  public static func GetStock(game: GameInstance, bizId: CName, resource: CName) -> Int32 {
-    return GameInstance.GetQuestsSystem(game).GetFact(CorpoBizState.ResourceKey(bizId, resource, "stock"));
+  public static func GetStock(game: GameInstance, bizId: CName, resource: ref<Resource>) -> Int32 {
+    return GameInstance.GetQuestsSystem(game).GetFact(CorpoBizState.ResourceKey(bizId, resource.Id(), "stock"));
   }
 
-  public static func SetStock(game: GameInstance, bizId: CName, resource: CName, value: Int32) -> Void {
+  public static func SetStock(game: GameInstance, bizId: CName, resource: ref<Resource>, value: Int32) -> Void {
     let clamped = value;
     if clamped < 0 {
       clamped = 0;
-    } else if clamped > 100 {
-      clamped = 100;
+    } else if clamped > resource.maxQuantity {
+      clamped = resource.maxQuantity;
     }
-    GameInstance.GetQuestsSystem(game).SetFact(CorpoBizState.ResourceKey(bizId, resource, "stock"), clamped);
+    GameInstance.GetQuestsSystem(game).SetFact(CorpoBizState.ResourceKey(bizId, resource.Id(), "stock"), clamped);
+  }
+
+  public static func GetSupplyLevel(game: GameInstance, bizId: CName, resource: ref<Resource>) -> SupplyLevel {
+    let level: SupplyLevel;
+    level.maxQuantity = resource.maxQuantity;
+    level.currentQuantity = CorpoBizState.GetStock(game, bizId, resource);
+    return level;
   }
 
   public static func IsRoleHired(game: GameInstance, bizId: CName, role: CName) -> Bool {

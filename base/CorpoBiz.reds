@@ -20,7 +20,7 @@ public class CorpoBiz {
     if trans.RemoveItem(player, MarketSystem.Money(), def.purchasePrice) {
       CorpoBizState.SetOwned(game, def.id);
       for resource in def.inputs {
-        CorpoBizState.SetStock(game, def.id, resource.Id(), 100);
+        CorpoBizState.SetStock(game, def.id, resource, resource.maxQuantity);
       }
     }
   }
@@ -48,15 +48,15 @@ public class CorpoBiz {
     CorpoBizState.SetRoleVariant(game, bizId, role, next);
   }
 
-  public static func TryRestock(game: GameInstance, player: ref<GameObject>, def: BizDef, resource: CName) -> Void {
-    let stock = CorpoBizState.GetStock(game, def.id, resource);
-    if stock >= 100 {
+  public static func TryRestock(game: GameInstance, player: ref<GameObject>, def: BizDef, resource: ref<Resource>) -> Void {
+    let level = CorpoBizState.GetSupplyLevel(game, def.id, resource);
+    if level.currentQuantity >= level.maxQuantity {
       return;
     }
     let cost = def.restockCostPer10Percent * 3;
     let trans = GameInstance.GetTransactionSystem(game);
     if trans.RemoveItem(player, MarketSystem.Money(), cost) {
-      CorpoBizState.SetStock(game, def.id, resource, stock + 30);
+      CorpoBizState.SetStock(game, def.id, resource, level.currentQuantity + 30);
     }
   }
 
@@ -90,14 +90,15 @@ public class CorpoBiz {
     let hiredRevenuePerDay = CorpoBiz.HiredRevenuePerDay(game, def);
 
     if CorpoBiz.HasPrimaryResource(def) {
-      let primaryResource = CorpoBiz.PrimaryResource(def).Id();
-      let stock = CorpoBizState.GetStock(game, def.id, primaryResource);
-      if activeRoles > 0 && stock > 0 {
-        let earned = Cast<Int32>(Cast<Float>(hiredRevenuePerDay) * (Cast<Float>(stock) / 100.0) * deltaDays);
+      let resource = CorpoBiz.PrimaryResource(def);
+      let level = CorpoBizState.GetSupplyLevel(game, def.id, resource);
+      if activeRoles > 0 && level.currentQuantity > 0 {
+        let fillFraction = Cast<Float>(level.currentQuantity) / Cast<Float>(level.maxQuantity);
+        let earned = Cast<Int32>(Cast<Float>(hiredRevenuePerDay) * fillFraction * deltaDays);
         CorpoBizState.AddCash(game, def.id, earned);
       }
       let decay = Cast<Int32>(Cast<Float>(def.stockDecayPerDayPerActiveRole * activeRoles) * deltaDays);
-      CorpoBizState.SetStock(game, def.id, primaryResource, stock - decay);
+      CorpoBizState.SetStock(game, def.id, resource, level.currentQuantity - decay);
     } else if activeRoles > 0 {
       let earned = Cast<Int32>(Cast<Float>(hiredRevenuePerDay) * deltaDays);
       CorpoBizState.AddCash(game, def.id, earned);

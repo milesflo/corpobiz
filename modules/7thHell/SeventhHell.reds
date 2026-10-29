@@ -37,8 +37,9 @@ public class SeventhHellModule extends BizModule {
   // keyed off stockDecayPerDayPerActiveRole, not a per-resource rate) --
   // 24/day (one drink an hour per active shift) is illustrative, not yet
   // load-bearing, until Settle catches up to the Resource model.
+  // maxQuantity = 100 preserves the original 0-100 "percent" stock scale.
   private func AlcoholResource() -> ref<Resource> {
-    return SimpleResource.Create(n"alcohol", "Alcohol", 24);
+    return SimpleResource.Create(n"alcohol", "Alcohol", 24, 100);
   }
 
   // array<CName> works fine (native element type); array<RoleDef>-shaped
