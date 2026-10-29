@@ -18,9 +18,8 @@ public class StaffSpawnerDelayCallback extends DelayCallback {
   }
 }
 
-// Generic over every business in CorpoBizRegistry.All() -- adding a second
-// business gets proximity-based staff spawning for free, no changes needed
-// here.
+// Generic over every module in CorpoBizRegistry.All() -- installing a new
+// business module gets proximity-based staff spawning for free.
 public class StaffSpawner {
 
   public static func Start(game: GameInstance) -> Void {
@@ -35,18 +34,19 @@ public class StaffSpawner {
       return;
     }
 
-    for def in CorpoBizRegistry.All() {
+    for mod in CorpoBizRegistry.All() {
+      let def = mod.Def();
       let dist = Vector4.Distance(player.GetWorldPosition(), def.terminalPosition);
       if dist < ProximityRadius() {
-        StaffSpawner.EnsurePresent(game, def);
+        StaffSpawner.EnsurePresent(game, mod, def);
         HostileCleanup.Tick(game, player, def);
       } else {
-        StaffSpawner.EnsureAbsent(game, def);
+        StaffSpawner.EnsureAbsent(def);
       }
     }
   }
 
-  private static func EnsurePresent(game: GameInstance, def: BizDef) -> Void {
+  private static func EnsurePresent(game: GameInstance, mod: ref<BizModule>, def: BizDef) -> Void {
     let dynamics = GameInstance.GetDynamicEntitySystem();
     for role in def.roles {
       let tag = RoleTag(def.id, role.id);
@@ -57,7 +57,7 @@ public class StaffSpawner {
         }
         if !dynamics.IsPopulated(tag) {
           let spec = new DynamicEntitySpec();
-          spec.templatePath = CorpoBizRegistry.RoleVariantTemplatePath(def.id, role.id, desiredVariant, role.templatePath);
+          spec.templatePath = mod.RoleVariantTemplatePath(role.id, desiredVariant);
           spec.position = role.position;
           spec.orientation = role.orientation;
           spec.persistState = false;
@@ -75,7 +75,7 @@ public class StaffSpawner {
     }
   }
 
-  private static func EnsureAbsent(game: GameInstance, def: BizDef) -> Void {
+  private static func EnsureAbsent(def: BizDef) -> Void {
     let dynamics = GameInstance.GetDynamicEntitySystem();
     for role in def.roles {
       dynamics.DeleteTagged(RoleTag(def.id, role.id));

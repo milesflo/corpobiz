@@ -1,11 +1,11 @@
 module CorpoBiz
 
 // Injects a synthetic entry into the Mail tab of any computer terminal
-// standing near a registered business's terminal position, turning it into
-// that business's menu. Reuses the vanilla mail-thumbnail widget definition
-// so no new UI assets are needed; a sentinel folderID marks our entries so
-// OnDocumentThumbnailCallback can intercept clicks before the real
-// document-open logic runs. Generic over every business in
+// standing near a registered business module's terminal position, turning
+// it into that business's menu. Reuses the vanilla mail-thumbnail widget
+// definition so no new UI assets are needed; a sentinel folderID marks our
+// entries so OnDocumentThumbnailCallback can intercept clicks before the
+// real document-open logic runs. Generic over every module in
 // CorpoBizRegistry.All() -- a second business's terminal, anywhere else in
 // the world, gets this same "Biz" tab automatically.
 //
@@ -20,7 +20,7 @@ module CorpoBiz
 // Role-listing rows (Staff page) are built via count-based branching rather
 // than a loop, for the same reason: array<SDocumentThumbnailWidgetPackage>
 // literals are fixed-size at the call site, with no way to append more
-// elements dynamically. This supports businesses with 0-4 roles; a business
+// elements dynamically. This supports modules with 0-4 roles; a module
 // needing more would need another branch added below.
 public class TerminalUI {
 
@@ -32,16 +32,17 @@ public class TerminalUI {
     return -777;
   }
 
-  public static func FindBiz(controller: ref<ComputerInkGameController>) -> BizDef {
+  public static func FindBiz(controller: ref<ComputerInkGameController>) -> ref<BizModule> {
     let ownerPos = controller.GetOwner().GetWorldPosition();
     return CorpoBizRegistry.FindByPosition(ownerPos, TerminalUI.TerminalMatchRadius());
   }
 
-  public static func HandleSelection(game: GameInstance, player: ref<GameObject>, def: BizDef, documentID: Int32) -> Void {
+  public static func HandleSelection(game: GameInstance, player: ref<GameObject>, mod: ref<BizModule>, documentID: Int32) -> Void {
+    let def = mod.Def();
     CorpoBiz.Settle(game, def);
     let view = CorpoBizState.GetUIView(game, def.id);
     if view == 1 {
-      TerminalUI.HandleStaffSelection(game, player, def, documentID);
+      TerminalUI.HandleStaffSelection(game, player, mod, def, documentID);
     } else if view == 2 {
       TerminalUI.HandleStockSelection(game, player, def, documentID);
     } else {
@@ -64,7 +65,7 @@ public class TerminalUI {
     }
   }
 
-  private static func HandleStaffSelection(game: GameInstance, player: ref<GameObject>, def: BizDef, documentID: Int32) -> Void {
+  private static func HandleStaffSelection(game: GameInstance, player: ref<GameObject>, mod: ref<BizModule>, def: BizDef, documentID: Int32) -> Void {
     if documentID == 0 {
       CorpoBizState.SetUIView(game, def.id, 0);
       return;
@@ -81,7 +82,7 @@ public class TerminalUI {
         return;
       }
       if documentID == idx * 2 {
-        CorpoBiz.CycleRoleVariant(game, def.id, role.id, CorpoBizRegistry.RoleVariantCount(def.id, role.id));
+        CorpoBiz.CycleRoleVariant(game, def.id, role.id, mod.RoleVariantCount(role.id));
         return;
       }
     }
@@ -128,10 +129,11 @@ public class TerminalUI {
   // widgets available) and remembered via CorpoBizState.GetUIView: Home (buy
   // / nav), Staff (hire, fire, change look per role), Stock (level /
   // restock / collect).
-  public static func Dashboard(game: GameInstance, def: BizDef) -> array<SDocumentThumbnailWidgetPackage> {
+  public static func Dashboard(game: GameInstance, mod: ref<BizModule>) -> array<SDocumentThumbnailWidgetPackage> {
+    let def = mod.Def();
     let view = CorpoBizState.GetUIView(game, def.id);
     if view == 1 {
-      return TerminalUI.StaffDashboard(game, def);
+      return TerminalUI.StaffDashboard(game, mod, def);
     }
     if view == 2 {
       return TerminalUI.StockDashboard(game, def);
@@ -157,7 +159,7 @@ public class TerminalUI {
     return TerminalUI.MakeEntry(0, "home_buy", "Buy " + def.displayName + " -- $" + ToString(def.purchasePrice));
   }
 
-  public static func StaffDashboard(game: GameInstance, def: BizDef) -> array<SDocumentThumbnailWidgetPackage> {
+  public static func StaffDashboard(game: GameInstance, mod: ref<BizModule>, def: BizDef) -> array<SDocumentThumbnailWidgetPackage> {
     let count = 0;
     for role in def.roles {
       count += 1;
@@ -178,29 +180,29 @@ public class TerminalUI {
       return [back];
     }
     if count == 1 {
-      return [back, TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, def, 1, r1)];
+      return [back, TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, mod, def, 1, r1)];
     }
     if count == 2 {
       return [
         back,
-        TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, def, 1, r1),
-        TerminalUI.RoleStatusEntry(game, def, 2, r2), TerminalUI.RoleModelEntry(game, def, 2, r2)
+        TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, mod, def, 1, r1),
+        TerminalUI.RoleStatusEntry(game, def, 2, r2), TerminalUI.RoleModelEntry(game, mod, def, 2, r2)
       ];
     }
     if count == 3 {
       return [
         back,
-        TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, def, 1, r1),
-        TerminalUI.RoleStatusEntry(game, def, 2, r2), TerminalUI.RoleModelEntry(game, def, 2, r2),
-        TerminalUI.RoleStatusEntry(game, def, 3, r3), TerminalUI.RoleModelEntry(game, def, 3, r3)
+        TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, mod, def, 1, r1),
+        TerminalUI.RoleStatusEntry(game, def, 2, r2), TerminalUI.RoleModelEntry(game, mod, def, 2, r2),
+        TerminalUI.RoleStatusEntry(game, def, 3, r3), TerminalUI.RoleModelEntry(game, mod, def, 3, r3)
       ];
     }
     return [
       back,
-      TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, def, 1, r1),
-      TerminalUI.RoleStatusEntry(game, def, 2, r2), TerminalUI.RoleModelEntry(game, def, 2, r2),
-      TerminalUI.RoleStatusEntry(game, def, 3, r3), TerminalUI.RoleModelEntry(game, def, 3, r3),
-      TerminalUI.RoleStatusEntry(game, def, 4, r4), TerminalUI.RoleModelEntry(game, def, 4, r4)
+      TerminalUI.RoleStatusEntry(game, def, 1, r1), TerminalUI.RoleModelEntry(game, mod, def, 1, r1),
+      TerminalUI.RoleStatusEntry(game, def, 2, r2), TerminalUI.RoleModelEntry(game, mod, def, 2, r2),
+      TerminalUI.RoleStatusEntry(game, def, 3, r3), TerminalUI.RoleModelEntry(game, mod, def, 3, r3),
+      TerminalUI.RoleStatusEntry(game, def, 4, r4), TerminalUI.RoleModelEntry(game, mod, def, 4, r4)
     ];
   }
 
@@ -213,10 +215,10 @@ public class TerminalUI {
     return TerminalUI.MakeEntry(docId, key, "Hire " + NameToString(role.id) + " -- $" + ToString(role.hireCost));
   }
 
-  public static func RoleModelEntry(game: GameInstance, def: BizDef, idx: Int32, role: BizRoleDef) -> SDocumentThumbnailWidgetPackage {
+  public static func RoleModelEntry(game: GameInstance, mod: ref<BizModule>, def: BizDef, idx: Int32, role: BizRoleDef) -> SDocumentThumbnailWidgetPackage {
     let docId = idx * 2;
     let variant = CorpoBizState.GetRoleVariant(game, def.id, role.id);
-    let variantName = CorpoBizRegistry.RoleVariantName(def.id, role.id, variant);
+    let variantName = mod.RoleVariantName(role.id, variant);
     return TerminalUI.MakeEntry(docId, "staff_model_" + NameToString(role.id), "   Look: " + variantName + " (tap to change)");
   }
 
@@ -271,9 +273,9 @@ public class TerminalUI {
 @wrapMethod(ComputerInkGameController)
 protected func InitializeMailsThumbnails(widgetsData: script_ref<array<SDocumentThumbnailWidgetPackage>>) -> Void {
   let game = this.GetOwner().GetGame();
-  let def = TerminalUI.FindBiz(this);
-  if CorpoBizRegistry.IsValid(def) {
-    widgetsData = TerminalUI.Dashboard(game, def);
+  let mod = TerminalUI.FindBiz(this);
+  if IsDefined(mod) {
+    widgetsData = TerminalUI.Dashboard(game, mod);
   }
   wrappedMethod(widgetsData);
 }
@@ -287,8 +289,8 @@ protected func InitializeMailsThumbnails(widgetsData: script_ref<array<SDocument
 // to the Mail panel we already drive above -- no new content panel needed.
 @wrapMethod(ComputerInkGameController)
 protected func InitializeMenuButtons(widgetsData: script_ref<array<SComputerMenuButtonWidgetPackage>>) -> Void {
-  let def = TerminalUI.FindBiz(this);
-  if CorpoBizRegistry.IsValid(def) {
+  let mod = TerminalUI.FindBiz(this);
+  if IsDefined(mod) {
     widgetsData = [
       TerminalUI.MakeMenuButton("internet", "Gameplay-Devices-Computers-Common-Internet", n"iconInternet"),
       TerminalUI.MakeMenuButton("devices", "Gameplay-Devices-Computers-Common-System", n"iconNetwork"),
@@ -305,11 +307,11 @@ protected cb func OnDocumentThumbnailCallback(e: wref<inkPointerEvent>) -> Bool 
     if IsDefined(controller) {
       let address = controller.GetDocumentAdress();
       if Equals(address.folderID, TerminalUI.SentinelFolderId()) {
-        let def = TerminalUI.FindBiz(this);
-        if CorpoBizRegistry.IsValid(def) {
+        let mod = TerminalUI.FindBiz(this);
+        if IsDefined(mod) {
           let game = this.GetOwner().GetGame();
           let player = GameInstance.GetPlayerSystem(game).GetLocalPlayerMainGameObject();
-          TerminalUI.HandleSelection(game, player, def, address.documentID);
+          TerminalUI.HandleSelection(game, player, mod, address.documentID);
           this.RequestMailThumbnailWidgetsUpdate();
         }
         return false;

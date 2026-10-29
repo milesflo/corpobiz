@@ -9,47 +9,55 @@ restock, and collect revenue.
 
 ## How it's structured
 
-- `scripts/Biz7thHell/*.reds`
-  - **Generic framework** (`module CorpoBiz`) — knows nothing about any
-    specific business:
-    - `Biz.reds` — the data model: `BizDef`, `BizPrereq`/`BizPrereqKind`,
-      `BizRoleDef`, `BizResource`.
-    - `CorpoBizState.reds` — Facts-backed persistence, namespaced by bizId
-      (and role/resource id where relevant).
-    - `CorpoBizPrereqs.reds` — checks a `BizDef`'s purchase gates (quest
-      completion / player level / player stat).
-    - `CorpoBiz.reds` — buy/hire/fire/restock/collect actions and lazy
-      revenue + stock-decay accrual.
-    - `Registry.reds` — the composition root: every registered `BizDef`,
-      plus the one deliberate exception (see below).
-    - `StaffSpawner.reds` — proximity-based spawn/despawn of hired staff,
-      for every registered business.
-    - `HostileCleanup.reds` — despawns leftover hostile NPCs in a venue
-      once it's owned, for every registered business.
-    - `TerminalUI.reds` — injects a "Biz" tab into any terminal whose
-      position matches a registered business (see below).
-  - **Business catalog** (`module CorpoBiz.SeventhHell`) — the only file
-    that's actually specific to 7th Hell:
-    - `SeventhHell.reds` — its `BizDef` (price, prereqs, terminal position,
-      roles, input resource), role lookup, and look-variant catalog.
+- `scripts/Biz7thHell/src/` — the generic CorpoBiz framework (`module
+  CorpoBiz`). Knows nothing about any specific business:
+  - `Biz.reds` — the data model: `BizDef`, `BizPrereq`/`BizPrereqKind`,
+    `BizRoleDef`, `BizResource`.
+  - `BizModule.reds` — the module contract: an `abstract class BizModule`
+    every business implements (`Def()`, `GetRole()`,
+    `RoleVariantCount/TemplatePath/Name`).
+  - `CorpoBizState.reds` — Facts-backed persistence, namespaced by bizId
+    (and role/resource id where relevant).
+  - `CorpoBizPrereqs.reds` — checks a `BizDef`'s purchase gates (quest
+    completion / player level / player stat).
+  - `CorpoBiz.reds` — buy/hire/fire/restock/collect actions and lazy
+    revenue + stock-decay accrual.
+  - `Registry.reds` — the composition root: the only file in `src/`
+    allowed to name a specific business module by name.
+  - `StaffSpawner.reds` — proximity-based spawn/despawn of hired staff,
+    for every registered module.
+  - `HostileCleanup.reds` — despawns leftover hostile NPCs in a venue
+    once it's owned, for every registered module.
+  - `TerminalUI.reds` — injects a "Biz" tab into any terminal whose
+    position matches a registered module's business (see below).
+- `scripts/Biz7thHell/modules/<BusinessName>/` — one folder per business,
+  each independently installable. Currently just:
+  - `modules/7thHell/SeventhHell.reds` — `SeventhHellModule extends
+    BizModule`: its `BizDef` (price, prereqs, terminal position, roles,
+    input resource), role lookup, and look-variant catalog.
 - `info.json` — REDmod manifest (kept for compatibility; see caveat below).
 
-### Adding a second business
+### Installing a second business module
 
-Write a new catalog file (copy `SeventhHell.reds`'s shape) and add one line
-to `CorpoBizRegistry.All()` in `Registry.reds`. Staff spawning, hostile
-cleanup, and the terminal UI all pick it up automatically with no other
-changes.
+Add a new folder under `modules/` (Title-Case business name) with a class
+extending `BizModule`, then register one instance of it in
+`CorpoBizRegistry.All()` in `src/Registry.reds` — that's the only place in
+the generic engine allowed to reference a concrete module. Staff spawning,
+hostile cleanup, and the terminal UI all pick it up automatically with no
+other changes, since they only ever talk to modules through the
+`BizModule` interface.
 
-One spot is a deliberate, documented exception: **per-role "look" variants**
-(`CorpoBizRegistry.RoleVariantCount/TemplatePath/Name`) dispatch by bizId
-inside `Registry.reds` rather than being embedded in `BizRoleDef`, since
-that would bloat every role with data only some businesses use. A second
-business with its own look variants needs a branch added there. Similarly,
 `TerminalUI.StaffDashboard` builds its role rows via count-based branching
-(supports 0–4 roles) rather than a loop — `array<Struct>` has no `PushBack`
+rather than a loop (supports 0–4 roles) — `array<Struct>` has no `PushBack`
 in this redscript build, so a fixed-size array literal is the only way to
-return a variable number of rows; more than 4 roles needs another branch.
+return a variable number of rows; a module with more than 4 roles needs
+another branch added there.
+
+**Not yet verified to compile.** The `src`/`modules` split and the
+`BizModule` abstract-class refactor were done just before a session pause;
+the last known-good, fully-verified state was the flatter
+`CorpoBizRegistry`-dispatch-by-id version (see git history). Run the
+compile loop described below before relying on this structure in-game.
 
 ### Inputs/outputs (supply chains) — modeled, not yet playable
 
