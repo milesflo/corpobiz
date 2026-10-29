@@ -138,19 +138,6 @@ Game.GetQuestsSystem():SetFact("corpobiz_seventh_hell_gig_done", 1)
 print("value="..Game.GetQuestsSystem():GetFact("fact_name_here"))
 ```
 
-## Git commit signing
-
-This machine's global git config requires commit signing with a hardware
-security key (`ED25519-SK`), and `ssh-askpass` isn't installed, so git
-can't even prompt for the key's PIN -- commits fail with "Couldn't sign
-message: device not found" or "incorrect passphrase". Signing is disabled
-for *this repo only* (`git config commit.gpgsign false`, stored in this
-clone's local `.git/config`, not tracked by git). If this repo ever gets
-a fresh `git clone` (as opposed to copying the folder) on a machine with
-the same global signing requirement, that local override won't carry
-over and this will resurface -- rerun `git config commit.gpgsign false`
-in the new clone rather than fighting the signing prompt again.
-
 ## Architecture quick reference
 
 See `README.md` for the full picture. In short: `base/` is the generic
