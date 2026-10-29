@@ -1,21 +1,63 @@
-# Biz7thHell
+# Biz7thHell / CorpoBiz Framework
 
-A Cyberpunk 2077 redscript mod. After finishing the side gig "An Inconvenient
-Killer," the player can buy the nightclub 7th Hell (Downtown/City Center) and
-run it as a business from its in-world terminal: hire/fire staff, change
-their look, restock, and collect revenue.
+A Cyberpunk 2077 redscript mod, built on a small reusable framework
+("CorpoBiz") for owning and running businesses in the city. 7th Hell (a
+nightclub, Downtown/City Center) is the first business implemented on it:
+after finishing the side gig "An Inconvenient Killer," the player can buy it
+and run it from its in-world terminal — hire/fire staff, change their look,
+restock, and collect revenue.
 
 ## How it's structured
 
-- `scripts/Biz7thHell/*.reds` — all mod logic.
-  - `State.reds` — persistence, backed by the game's Facts system.
-  - `Config.reds` — roles, costs, positions, look variants.
-  - `Economy.reds` — lazy revenue/stock-decay accrual based on elapsed game time.
-  - `StaffSpawner.reds` — proximity-based spawning/despawning of hired staff.
-  - `HostileCleanup.reds` — despawns leftover hostile NPCs in the venue once owned.
-  - `Terminal.reds` — the actual buy/hire/fire/restock/collect actions.
-  - `TerminalUI.reds` — injects a "Biz" tab into the terminal's UI (see below).
+- `scripts/Biz7thHell/*.reds`
+  - **Generic framework** (`module CorpoBiz`) — knows nothing about any
+    specific business:
+    - `Biz.reds` — the data model: `BizDef`, `BizPrereq`/`BizPrereqKind`,
+      `BizRoleDef`, `BizResource`.
+    - `CorpoBizState.reds` — Facts-backed persistence, namespaced by bizId
+      (and role/resource id where relevant).
+    - `CorpoBizPrereqs.reds` — checks a `BizDef`'s purchase gates (quest
+      completion / player level / player stat).
+    - `CorpoBiz.reds` — buy/hire/fire/restock/collect actions and lazy
+      revenue + stock-decay accrual.
+    - `Registry.reds` — the composition root: every registered `BizDef`,
+      plus the one deliberate exception (see below).
+    - `StaffSpawner.reds` — proximity-based spawn/despawn of hired staff,
+      for every registered business.
+    - `HostileCleanup.reds` — despawns leftover hostile NPCs in a venue
+      once it's owned, for every registered business.
+    - `TerminalUI.reds` — injects a "Biz" tab into any terminal whose
+      position matches a registered business (see below).
+  - **Business catalog** (`module CorpoBiz.SeventhHell`) — the only file
+    that's actually specific to 7th Hell:
+    - `SeventhHell.reds` — its `BizDef` (price, prereqs, terminal position,
+      roles, input resource), role lookup, and look-variant catalog.
 - `info.json` — REDmod manifest (kept for compatibility; see caveat below).
+
+### Adding a second business
+
+Write a new catalog file (copy `SeventhHell.reds`'s shape) and add one line
+to `CorpoBizRegistry.All()` in `Registry.reds`. Staff spawning, hostile
+cleanup, and the terminal UI all pick it up automatically with no other
+changes.
+
+One spot is a deliberate, documented exception: **per-role "look" variants**
+(`CorpoBizRegistry.RoleVariantCount/TemplatePath/Name`) dispatch by bizId
+inside `Registry.reds` rather than being embedded in `BizRoleDef`, since
+that would bloat every role with data only some businesses use. A second
+business with its own look variants needs a branch added there. Similarly,
+`TerminalUI.StaffDashboard` builds its role rows via count-based branching
+(supports 0–4 roles) rather than a loop — `array<Struct>` has no `PushBack`
+in this redscript build, so a fixed-size array literal is the only way to
+return a variable number of rows; more than 4 roles needs another branch.
+
+### Inputs/outputs (supply chains) — modeled, not yet playable
+
+`BizDef.inputs`/`outputs: array<BizResource>` name the goods a business
+consumes/produces (7th Hell's input is "Alcohol", consumed as its stock).
+Actually moving a resource between businesses — GTA Online-style supply
+runs — is intentionally not implemented yet; this is just the data shape
+that feature will hang off of later.
 
 ## The terminal UI, and why it's built the way it is
 
