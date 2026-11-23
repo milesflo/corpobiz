@@ -10,6 +10,7 @@ module CorpoBiz
 public class CorpoBiz {
 
   public static func TryBuy(game: GameInstance, player: ref<GameObject>, def: BizDef) -> Void {
+    if !CoopBridge.IsHost() { return; }
     if CorpoBizState.IsOwned(game, def.id) {
       return;
     }
@@ -26,6 +27,7 @@ public class CorpoBiz {
   }
 
   public static func TryHireRole(game: GameInstance, player: ref<GameObject>, bizId: CName, role: BizRoleDef) -> Void {
+    if !CoopBridge.IsHost() { return; }
     if CorpoBizState.IsRoleHired(game, bizId, role.id) {
       return;
     }
@@ -36,6 +38,7 @@ public class CorpoBiz {
   }
 
   public static func TryFireRole(game: GameInstance, bizId: CName, role: CName) -> Void {
+    if !CoopBridge.IsHost() { return; }
     if !CorpoBizState.IsRoleHired(game, bizId, role) {
       return;
     }
@@ -43,12 +46,14 @@ public class CorpoBiz {
   }
 
   public static func CycleRoleVariant(game: GameInstance, bizId: CName, role: CName, variantCount: Int32) -> Void {
+    if !CoopBridge.IsHost() { return; }
     let current = CorpoBizState.GetRoleVariant(game, bizId, role);
     let next = (current + 1) % variantCount;
     CorpoBizState.SetRoleVariant(game, bizId, role, next);
   }
 
   public static func TryRestock(game: GameInstance, player: ref<GameObject>, def: BizDef, resource: ref<Resource>) -> Void {
+    if !CoopBridge.IsHost() { return; }
     let level = CorpoBizState.GetSupplyLevel(game, def.id, resource);
     if level.currentQuantity >= level.maxQuantity {
       return;
@@ -61,6 +66,7 @@ public class CorpoBiz {
   }
 
   public static func TryCollect(game: GameInstance, player: ref<GameObject>, bizId: CName) -> Void {
+    if !CoopBridge.IsHost() { return; }
     let amount = CorpoBizState.CollectCash(game, bizId);
     if amount > 0 {
       GameInstance.GetTransactionSystem(game).GiveItem(player, MarketSystem.Money(), amount);
@@ -74,6 +80,7 @@ public class CorpoBiz {
   // Hell's "Alcohol"); businesses with no inputs just accrue flat per-role
   // revenue with no stock decay.
   public static func Settle(game: GameInstance, def: BizDef) -> Void {
+    if !CoopBridge.IsHost() { return; }
     let now = CorpoBiz.CurrentTimestamp(game);
     let last = CorpoBizState.GetLastTickTime(game, def.id);
     if last == 0 {

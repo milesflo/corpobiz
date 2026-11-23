@@ -29,6 +29,7 @@ public class StaffSpawner {
   }
 
   public static func Tick(game: GameInstance) -> Void {
+    if !CoopBridge.IsHost() { return; }
     let player = GameInstance.GetPlayerSystem(game).GetLocalPlayerMainGameObject();
     if !IsDefined(player) {
       return;
@@ -92,7 +93,8 @@ public class StaffSpawner {
 @wrapMethod(ScriptedPuppet)
 protected cb func OnGameAttached() -> Void {
   wrappedMethod();
-  if this.IsPlayer() {
+  if this.IsPlayer() && CoopBridge.IsLocalPlayer(this.GetEntityID()) {
+    CoopBridge.Register();
     StaffSpawner.Start(this.GetGame());
   }
 }

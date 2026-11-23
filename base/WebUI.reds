@@ -277,6 +277,7 @@ public class CorpoBizWebUIAction extends IScriptable {
       return false;
     }
     let def = mod.Def();
+    CorpoBiz.Settle(this.game, def);
     let player = GameInstance.GetPlayerSystem(this.game).GetLocalPlayerMainGameObject();
 
     if Equals(this.kind, n"buy") {

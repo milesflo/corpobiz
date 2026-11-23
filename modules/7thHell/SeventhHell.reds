@@ -78,7 +78,7 @@ public class SeventhHellModule extends BizModule {
 @wrapMethod(ScriptedPuppet)
 protected cb func OnGameAttached() -> Void {
   wrappedMethod();
-  if this.IsPlayer() {
+  if this.IsPlayer() && CoopBridge.IsLocalPlayer(this.GetEntityID()) {
     CorpoBizRegistry.Register(this.GetGame(), new SeventhHellModule());
   }
 }
