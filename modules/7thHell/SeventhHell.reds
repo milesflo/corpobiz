@@ -6,29 +6,39 @@ import CorpoBiz.*
 public class SeventhHellModule extends BizModule {
 
   public func Def() -> BizDef {
+    // Scalar/Vector4 fields assigned BEFORE any array-of-struct field on
+    // this same struct -- see Registry.reds's debug findings: every
+    // module's terminalPosition was reading back as zero, including
+    // this one, which was never touched by today's changes. Suspected
+    // cause: an array<Struct> literal assignment (def.prereqs/def.roles)
+    // immediately followed by a Vector4 assignment on the same struct
+    // corrupts/zeroes that next assignment in this redscript build.
+    // Untested beyond this reordering actually fixing the symptom.
     let def: BizDef;
     def.id = n"seventh_hell";
     def.displayName = "7th Hell";
     def.purchasePrice = 15000;
-    def.prereqs = [this.GigPrereq()];
     def.terminalPosition = new Vector4(-1939.11, -49.75, -0.45, 1.0);
+    def.restockCostPer10Percent = 150;
+    def.stockDecayPerDayPerActiveRole = 8;
+    def.prereqs = [this.GigDonePrereq()];
     def.roles = [this.GetRole(n"bouncer"), this.GetRole(n"dj"), this.GetRole(n"dancer")];
     def.inputs = [this.AlcoholResource()];
     def.outputs = [];
-    def.restockCostPer10Percent = 150;
-    def.stockDecayPerDayPerActiveRole = 8;
     return def;
   }
 
-  // The real internal fact/journal entry for "An Inconvenient Killer"'s
-  // completion couldn't be reliably identified without decompiling the
-  // quest resource, so this is a self-asserted flag instead of a real
-  // vanilla quest fact. Set it from the console to unlock for testing:
-  //   Game.GetQuestsSystem():SetFact("corpobiz_seventh_hell_gig_done", 1)
-  private func GigPrereq() -> BizPrereq {
+  // The real internal resource path for the gig "An Inconvenient Killer"
+  // (confirmed via community quest-id docs, then verified live in-game via
+  // the CET console: `GameInstance.GetJournalManager(game)
+  // .GetEntryByString(path, "gameJournalQuest")` resolves this path and
+  // `.GetEntryState(entry)` correctly reported `Succeeded` after finishing
+  // it) -- replaces the earlier self-asserted "pretend this is done" Fact,
+  // which is no longer needed now that the real journal state is checked.
+  private func GigDonePrereq() -> BizPrereq {
     let p: BizPrereq;
-    p.kind = BizPrereqKind.Quest;
-    p.questFact = n"corpobiz_seventh_hell_gig_done";
+    p.kind = BizPrereqKind.Gig;
+    p.gigPath = "quests/street_stories/city_center/downtown/sts_cct_dtn_02";
     return p;
   }
 

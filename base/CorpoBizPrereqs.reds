@@ -18,6 +18,10 @@ public class CorpoBizPrereqs {
     switch prereq.kind {
       case BizPrereqKind.Quest:
         return GameInstance.GetQuestsSystem(game).GetFact(prereq.questFact) > 0;
+      case BizPrereqKind.Gig:
+        let journal = GameInstance.GetJournalManager(game);
+        let entry = journal.GetEntryByString(prereq.gigPath, "gameJournalQuest");
+        return IsDefined(entry) && Equals(journal.GetEntryState(entry), gameJournalEntryState.Succeeded);
       case BizPrereqKind.Level:
         return RPGManager.GetStatValueFromObject(game, player, gamedataStatType.Level) >= Cast<Float>(prereq.requiredLevel);
       case BizPrereqKind.Stat:

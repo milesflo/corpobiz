@@ -48,8 +48,9 @@ can be filled in whenever someone scouts locations.
     position matches a registered module's business (see below).
 - `modules/<BusinessName>/` — one folder per business, each
   independently installable:
-  - `modules/7thHell/SeventhHell.reds` — the nightclub; real site,
-    self-asserted gig-completion gate.
+  - `modules/7thHell/SeventhHell.reds` — the nightclub; real site, real
+    gig-completion gate (checked against the actual journal state, not a
+    self-asserted flag).
   - `modules/RustvaleFarm/RustvaleFarm.reds` — grows Grain; no site yet.
   - `modules/WatsonDistillery/WatsonDistillery.reds` — Grain -> Alcohol;
     no site yet.

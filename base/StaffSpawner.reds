@@ -36,7 +36,13 @@ public class StaffSpawner {
 
     for mod in CorpoBizRegistry.All(game) {
       let def = mod.Def();
-      let dist = Vector4.Distance(player.GetWorldPosition(), def.terminalPosition);
+      // CorpoBizRegistry.DistanceXYZ(), not Vector4.Distance() -- see that
+      // function's own comment for why it exists (suspected NaN from a
+      // GetWorldPosition() W=0 vs terminalPosition's W=1 mismatch, which
+      // makes `dist < ProximityRadius()` always false). This call site
+      // never got the same fix FindByPosition did, so staff silently
+      // never spawned regardless of actual proximity.
+      let dist = CorpoBizRegistry.DistanceXYZ(player.GetWorldPosition(), def.terminalPosition);
       if dist < ProximityRadius() {
         StaffSpawner.EnsurePresent(game, mod, def);
         HostileCleanup.Tick(game, player, def);

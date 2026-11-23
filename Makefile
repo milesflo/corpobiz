@@ -150,14 +150,14 @@ compile: deploy paths-file
 			xdotool windowactivate --sync "$$WIN"
 			xdotool key Return
 		fi
-		if grep -qE "\[INFO\] Compilation complete|\[ERROR\]" "$(COMPILE_LOG)" 2>/dev/null; then
+		if grep -qE "Compilation complete|\[ERROR" "$(COMPILE_LOG)" 2>/dev/null; then
 			break
 		fi
 		sleep 1
 	done
 	wait $$COMPILE_PID 2>/dev/null
 	cat "$(COMPILE_LOG)"
-	if grep -q "\[ERROR\]" "$(COMPILE_LOG)"; then
+	if grep -q "\[ERROR" "$(COMPILE_LOG)"; then
 		echo "COMPILE FAILED"
 		exit 1
 	else

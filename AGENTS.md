@@ -92,6 +92,70 @@ failing compile to prove otherwise:
   `base/Registry.reds`'s `RoleVariantCount/TemplatePath/Name` for the one
   place that needed this, kept to a single file by design).
 
+- **Procedural ink widgets (`inkCanvas`/`inkText`/`inkRectangle`) are a
+  real, pure-script alternative to WolvenKit-authored UI assets** -- they
+  compile against the game's native type info (same as any other native
+  class), so wrong method names/signatures are caught by the compiler
+  like anything else. Confirmed working, found by letting real compile
+  errors correct wrong guesses (see `base/WebUI.reds`):
+  - `new inkCanvas()` / `new inkText()` / `new inkRectangle()`, then
+    `.Reparent(parent)` to attach -- not a `parent.AddChild(widget)` call.
+  - `inkEAnchor.TopLeft` works; `TopFillHorizontally` doesn't exist on
+    that enum (didn't check which fill-style members, if any, do).
+  - Removing a previously-built widget is `parent.RemoveChild(widget)`
+    (called on the *parent*) -- `widget.Unparent()` and
+    `widget.RemoveFromParent()` don't exist on `inkWidget`, despite both
+    being very plausible-sounding guesses.
+  - `inkCompoundWidget.GetWidgetByPathName(name: CName)` takes a bare
+    `CName`, not an `inkWidgetPath` -- no need to build one.
+  - `ComputerInkGameController.GetRootCompoundWidget()` returns the
+    terminal's actual on-screen root widget -- confirmed by compiling,
+    NOT yet confirmed to be the right attach point visually (z-order
+    versus the vanilla Mail-thumbnail list it sits alongside, whether it
+    actually renders where expected) -- that needs an in-game look, which
+    the compiler can't tell you.
+  - Color is `HDRColor(r, g, b, a)` with 0.0-1.0 float components, passed
+    to `SetTintColor` -- worked first try, unconfirmed whether a
+    non-HDR `Color` overload also exists.
+
+- **Checking real vanilla quest/gig completion: use `JournalManager`, not
+  a guessed Fact name.** A quest's completion Fact is hand-authored per
+  quest with no naming convention (confirmed via redmodding.org's own
+  docs: "There is no strict naming convention") -- guessing one is a
+  silent-failure risk with zero compiler safety net, unlike guessing a
+  method/class name (which a failed `make compile` catches immediately).
+  `JournalManager` sidesteps needing the Fact at all:
+  - Find the quest/gig's real internal resource path first -- e.g. via
+    [CDPR-Modding-Documentation/Cyberpunk-Modding-Docs' quest-id
+    reference](https://github.com/CDPR-Modding-Documentation/Cyberpunk-Modding-Docs/blob/main/for-mod-creators-theory/references-lists-and-overviews/reference-quest-ids.md)
+    on GitHub (gigs are listed under "Street Stories", e.g. "An
+    Inconvenient Killer" -> `quests/street_stories/city_center/downtown/sts_cct_dtn_02`).
+  - `GameInstance.GetJournalManager(game).GetEntryByString(path: String,
+    "gameJournalQuest")` resolves that path to a journal entry (confirmed
+    compiling AND confirmed live in-game via the CET console one-liner
+    in the "Useful CET console commands" section below).
+  - `.GetEntryState(entry)` returns a `gameJournalEntryState` (`Succeeded`
+    confirmed as the completed state, ordinal 3) -- compare with
+    `Equals(state, gameJournalEntryState.Succeeded)`.
+  - See `base/CorpoBizPrereqs.reds`'s `BizPrereqKind.Gig` case and
+    `modules/7thHell/SeventhHell.reds`'s `GigDonePrereq()` for the working
+    pattern -- this replaced 7th Hell's earlier self-asserted
+    `corpobiz_seventh_hell_gig_done` Fact, which is no longer used.
+  - **If a future module's gig isn't in that GitHub doc, find its short id
+    live in-game instead** (confirmed working end-to-end for 7th Hell's
+    `sts_cct_dtn_02`, matching the docs exactly): with the gig active and
+    its current objective tracked on-screen, `jm:GetTrackedEntry()`
+    returns that *objective*, not the gig -- one `jm:GetParentEntry(...)`
+    hop up lands on the gig-level entry, whose `tostring(entry:GetId())`
+    is the short id (e.g. `"sts_cct_dtn_02"`). **Use `tostring()`, never
+    CET's `Dump()`, on an id value** -- see the CET gotcha below for why.
+    The short id alone isn't enough for `GetEntryByString` (which needs
+    the full dictionary path, e.g.
+    `quests/street_stories/city_center/downtown/sts_cct_dtn_02`) --
+    untested whether repeatedly walking `GetParentEntry()` all the way to
+    the root and joining each ancestor's id with `/` reconstructs that
+    full path without needing the docs reference at all.
+
 ## Tooling / environment gotchas
 
 - **REDmod's own `mods/<name>/` + `redmod.exe deploy` pipeline doesn't
@@ -108,6 +172,19 @@ failing compile to prove otherwise:
   are plainly there. Always use `engine/tools/scc.exe` (standalone
   redscript package), never the REDmod-bundled one.
 
+- **`make compile`'s error-detection grep was silently broken from the
+  start** (fixed now, but worth knowing why): it looked for the literal
+  substring `[ERROR]` and `[INFO] Compilation complete`, but scc.exe's
+  real log format always embeds a timestamp inside the brackets --
+  `[ERROR - Thu, 29 Oct 2026 14:24:17 -0700] [CODE] ...` -- so the exact
+  string `[ERROR]` never appears and the check always fell through to
+  "COMPILE OK" even with real errors present. Every prior session's
+  compiles happened to have zero errors, so this never got exercised
+  until it did. Fixed to match `\[ERROR` / `Compilation complete`
+  (dropping the exact-closing-bracket requirement) -- if `make compile`
+  ever reports OK but something still seems off, grep the actual
+  `_scratch/compile.log` by hand to be sure, same as this was caught.
+
 - **A blocking "Compilation error" dialog stops the Wine process** when a
   `.reds` file fails to compile. `make compile` auto-dismisses it with
   `xdotool`, but `xdotool` **must run from the host X session**, not from
@@ -121,6 +198,14 @@ failing compile to prove otherwise:
   `print("x="..Game.GetQuestsSystem():GetFact("x"))`. The console is also
   single-line only -- it doesn't accept multi-line pasted input.
 
+- **CET's `Dump(obj, detailed)` crashed the whole game (not a Lua error --
+  the process went down) when called on the value returned by a journal
+  entry's `GetId()`.** `Dump()` is apparently only safe on real object
+  handles (`GameDataType`s like `Game.GetPlayer()`), not on whatever
+  value/struct type an id-like getter returns. Don't call `Dump()` on a
+  return value until its type is known to be a real object -- `tostring()`
+  on it directly is the safe fallback for value types.
+
 ## Useful CET console commands for manual testing
 
 Paste into the CET console in-game (single line each):
@@ -129,13 +214,13 @@ Paste into the CET console in-game (single line each):
 -- Give the player money
 Game.GetTransactionSystem():GiveItem(Game.GetPlayer(), MarketSystem.Money(), 50000)
 
--- Unlock 7th Hell's purchase gate (the real "An Inconvenient Killer"
--- completion fact was never identified; this is the self-asserted flag
--- SeventhHell.reds checks instead -- see its GigPrereq() comment)
-Game.GetQuestsSystem():SetFact("corpobiz_seventh_hell_gig_done", 1)
-
 -- Read any Fact (must use print -- see console gotcha above)
 print("value="..Game.GetQuestsSystem():GetFact("fact_name_here"))
+
+-- Check a gig/quest's real journal state by its internal resource path
+-- (see the "JournalManager" gotcha below for how this path was found and
+-- confirmed) -- Succeeded is ordinal 3 in gameJournalEntryState
+local jm = Game.GetJournalManager(); local e = jm:GetEntryByString("quests/street_stories/city_center/downtown/sts_cct_dtn_02", "gameJournalQuest"); print(e ~= nil and tostring(jm:GetEntryState(e)) or "NOT FOUND")
 ```
 
 ## Architecture quick reference

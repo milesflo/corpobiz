@@ -22,17 +22,25 @@ module CorpoBiz
 public enum BizPrereqKind {
   Quest = 0,
   Level = 1,
-  Stat = 2
+  Stat = 2,
+  Gig = 3
 }
 
 // A single purchase gate. Only the field(s) matching `kind` are meaningful.
 public struct BizPrereq {
   let kind: BizPrereqKind;
 
-  // Quest: a Facts-system flag that must be >= 1. Works equally well for a
-  // real vanilla quest-completion fact or a self-asserted "pretend this is
-  // done" flag -- see SeventhHell.reds for why 7th Hell uses the latter.
+  // Quest: a Facts-system flag that must be >= 1. Kept for prereqs with no
+  // real vanilla quest behind them (a self-asserted "pretend this is done"
+  // flag) -- for a real vanilla quest/gig, prefer Gig below instead, which
+  // checks the actual journal state rather than trusting a hand-set Fact.
   let questFact: CName;
+
+  // Gig: the quest/gig's real internal resource path (e.g.
+  // "quests/street_stories/city_center/downtown/sts_cct_dtn_02" for "An
+  // Inconvenient Killer"), confirmed met once JournalManager reports that
+  // path's entry state as Succeeded. See CorpoBizPrereqs.IsPrereqMet.
+  let gigPath: String;
 
   // Level: player character level.
   let requiredLevel: Int32;
@@ -54,12 +62,28 @@ public struct BizRoleDef {
   let revenuePerDay: Int32;
 }
 
+// Field order here is NOT cosmetic: every array field is grouped at the
+// end, after every scalar/Vector4 field, deliberately. Debugging found
+// terminalPosition reading back as zero at runtime for every module --
+// confirmed (via an isolated, Def()-free Vector4 construct-and-read) to
+// NOT be a general Vector4 bug, and confirmed (by reordering the writes
+// inside Def(), which did nothing) to NOT be about assignment order
+// either. The remaining difference was terminalPosition's own
+// *declared* position in this struct, sandwiched between two array
+// fields (prereqs before it, roles after). Moving every array field to
+// the end, so no scalar/Vector4 field is ever declared adjacent to one,
+// is the fix being tested -- if this works, treat "no array field next
+// to a scalar/Vector4 field in the same struct" as a hard rule for any
+// future struct in this codebase, not just this one.
 public struct BizDef {
   let id: CName;
   let displayName: String;
   let purchasePrice: Int32;
-  let prereqs: array<BizPrereq>;
   let terminalPosition: Vector4;
+  let restockCostPer10Percent: Int32;
+  let stockDecayPerDayPerActiveRole: Int32;
+
+  let prereqs: array<BizPrereq>;
 
   // Full role definitions, embedded directly rather than split into an id
   // list plus an external lookup function -- that keeps staff spawning and
@@ -77,7 +101,4 @@ public struct BizDef {
   // business to consume as an input. Empty if it only produces cash
   // (money is not a Resource -- see Resource.reds).
   let outputs: array<ref<Resource>>;
-
-  let restockCostPer10Percent: Int32;
-  let stockDecayPerDayPerActiveRole: Int32;
 }

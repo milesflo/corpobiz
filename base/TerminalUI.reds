@@ -35,7 +35,22 @@ public class TerminalUI {
   public static func FindBiz(controller: ref<ComputerInkGameController>) -> ref<BizModule> {
     let ownerPos = controller.GetOwner().GetWorldPosition();
     let game = controller.GetOwner().GetGame();
-    return CorpoBizRegistry.FindByPosition(game, ownerPos, TerminalUI.TerminalMatchRadius());
+
+    // TEMPORARY DEBUG -- records every FindBiz call (so we can tell
+    // "never called" from "called but didn't match") plus the actual
+    // ownerPos it computed, as Facts readable from the CET console.
+    // Facts only store Int32, so position components are x100 scaled --
+    // divide by 100 when reading back. Remove once the matching issue is
+    // resolved.
+    let quests = GameInstance.GetQuestsSystem(game);
+    quests.SetFact(n"corpobiz_debug_findbiz_calls", quests.GetFact(n"corpobiz_debug_findbiz_calls") + 1);
+    quests.SetFact(n"corpobiz_debug_ownerpos_x", Cast<Int32>(ownerPos.X * 100.0));
+    quests.SetFact(n"corpobiz_debug_ownerpos_y", Cast<Int32>(ownerPos.Y * 100.0));
+    quests.SetFact(n"corpobiz_debug_ownerpos_z", Cast<Int32>(ownerPos.Z * 100.0));
+
+    let result = CorpoBizRegistry.FindByPosition(game, ownerPos, TerminalUI.TerminalMatchRadius());
+    quests.SetFact(n"corpobiz_debug_findbiz_matched", IsDefined(result) ? 1 : 0);
+    return result;
   }
 
   public static func HandleSelection(game: GameInstance, player: ref<GameObject>, mod: ref<BizModule>, documentID: Int32) -> Void {
@@ -75,11 +90,37 @@ public class TerminalUI {
     for role in def.roles {
       idx += 1;
       if documentID == idx * 2 - 1 {
-        if CorpoBizState.IsRoleHired(game, def.id, role.id) {
+        // TEMPORARY DEBUG -- pinning down a contradiction: the console
+        // independently reads the "hired" Fact as 1 and staying 1, yet
+        // clicking this row keeps charging money (only the hire branch
+        // below does that). Logs exactly what this specific click sees,
+        // right at the decision point. Remove once resolved.
+        let quests = GameInstance.GetQuestsSystem(game);
+        quests.SetFact(n"corpobiz_debug_staffclick_docid", documentID);
+        quests.SetFact(n"corpobiz_debug_staffclick_idx", idx);
+        let hiredNow = CorpoBizState.IsRoleHired(game, def.id, role.id);
+        quests.SetFact(n"corpobiz_debug_staffclick_hired_before", hiredNow ? 1 : 0);
+        // TEMPORARY DEBUG -- direct side-by-side comparison: read the
+        // exact hardcoded Fact name the console check used, plus whether
+        // def.id/role.id actually Equals() the literals we expect, right
+        // here at the call site. If hardcoded_fact=1 but hired_before=0
+        // above, def.id/role.id aren't what we think they are at this
+        // point -- bizid_match/roleid_match pin down which one.
+        quests.SetFact(n"corpobiz_debug_staffclick_hardcoded_fact", quests.GetFact(n"corpobiz_seventh_hell_role_bouncer_hired"));
+        quests.SetFact(n"corpobiz_debug_staffclick_bizid_match", Equals(def.id, n"seventh_hell") ? 1 : 0);
+        quests.SetFact(n"corpobiz_debug_staffclick_roleid_match", Equals(role.id, n"bouncer") ? 1 : 0);
+        if hiredNow {
+          quests.SetFact(n"corpobiz_debug_staffclick_branch", 2);
           CorpoBiz.TryFireRole(game, def.id, role.id);
         } else {
+          quests.SetFact(n"corpobiz_debug_staffclick_branch", 1);
           CorpoBiz.TryHireRole(game, player, def.id, role);
         }
+        // TEMPORARY DEBUG -- read the Fact back immediately after the
+        // Hire/Fire call returns, in the same function call, to see
+        // exactly what SetRoleHired's `hired ? 1 : 0` ternary actually
+        // wrote (vs. what we expected based on which branch ran above).
+        quests.SetFact(n"corpobiz_debug_staffclick_hired_after", CorpoBizState.IsRoleHired(game, def.id, role.id) ? 1 : 0);
         return;
       }
       if documentID == idx * 2 {
@@ -155,9 +196,9 @@ public class TerminalUI {
 
   public static func DashboardBuyEntry(game: GameInstance, def: BizDef) -> SDocumentThumbnailWidgetPackage {
     if CorpoBizState.IsOwned(game, def.id) {
-      return TerminalUI.MakeEntry(0, "home_buy", def.displayName + " -- OWNED");
+      return TerminalUI.MakeEntry(0, "home_buy_owned", def.displayName + " -- OWNED");
     }
-    return TerminalUI.MakeEntry(0, "home_buy", "Buy " + def.displayName + " -- $" + ToString(def.purchasePrice));
+    return TerminalUI.MakeEntry(0, "home_buy_unowned", "Buy " + def.displayName + " -- $" + ToString(def.purchasePrice));
   }
 
   public static func StaffDashboard(game: GameInstance, mod: ref<BizModule>, def: BizDef) -> array<SDocumentThumbnailWidgetPackage> {
@@ -207,20 +248,28 @@ public class TerminalUI {
     ];
   }
 
+  // The widget key (3rd arg to MakeEntry) deliberately encodes the hired
+  // state -- see MakeEntry's own comment: the game dedups cached widgets
+  // by ownerID+widgetName+..., NOT by documentAddress or content, so a
+  // key that stays the same across a hire/fire toggle gets its OLD cached
+  // text reused forever instead of refreshing. Confirmed via debug Facts:
+  // the underlying Fact genuinely flips 1<->0 correctly on click, but the
+  // row kept showing stale text because the key never changed. Making the
+  // key itself state-dependent forces the engine to treat a toggle as a
+  // brand-new widget.
   public static func RoleStatusEntry(game: GameInstance, def: BizDef, idx: Int32, role: BizRoleDef) -> SDocumentThumbnailWidgetPackage {
     let docId = idx * 2 - 1;
-    let key = "staff_status_" + NameToString(role.id);
     if CorpoBizState.IsRoleHired(game, def.id, role.id) {
-      return TerminalUI.MakeEntry(docId, key, NameToString(role.id) + ": HIRED (tap to fire)");
+      return TerminalUI.MakeEntry(docId, "staff_status_" + NameToString(role.id) + "_hired", NameToString(role.id) + ": HIRED (tap to fire)");
     }
-    return TerminalUI.MakeEntry(docId, key, "Hire " + NameToString(role.id) + " -- $" + ToString(role.hireCost));
+    return TerminalUI.MakeEntry(docId, "staff_status_" + NameToString(role.id) + "_unhired", "Hire " + NameToString(role.id) + " -- $" + ToString(role.hireCost));
   }
 
   public static func RoleModelEntry(game: GameInstance, mod: ref<BizModule>, def: BizDef, idx: Int32, role: BizRoleDef) -> SDocumentThumbnailWidgetPackage {
     let docId = idx * 2;
     let variant = CorpoBizState.GetRoleVariant(game, def.id, role.id);
     let variantName = mod.RoleVariantName(role.id, variant);
-    return TerminalUI.MakeEntry(docId, "staff_model_" + NameToString(role.id), "   Look: " + variantName + " (tap to change)");
+    return TerminalUI.MakeEntry(docId, "staff_model_" + NameToString(role.id) + "_v" + ToString(variant), "   Look: " + variantName + " (tap to change)");
   }
 
   public static func StockDashboard(game: GameInstance, def: BizDef) -> array<SDocumentThumbnailWidgetPackage> {
@@ -228,7 +277,7 @@ public class TerminalUI {
     if !CorpoBiz.HasPrimaryResource(def) {
       return [
         TerminalUI.MakeEntry(0, "stock_back", "<- Back"),
-        TerminalUI.MakeEntry(1, "stock_status", "Uncollected cash: $" + ToString(cash)),
+        TerminalUI.MakeEntry(1, "stock_status_" + ToString(cash), "Uncollected cash: $" + ToString(cash)),
         TerminalUI.CollectEntry(game, def)
       ];
     }
@@ -236,7 +285,10 @@ public class TerminalUI {
     let level = CorpoBizState.GetSupplyLevel(game, def.id, resource);
     return [
       TerminalUI.MakeEntry(0, "stock_back", "<- Back"),
-      TerminalUI.MakeEntry(1, "stock_status", resource.DisplayName() + ": " + ToString(level.currentQuantity) + "/" + ToString(level.maxQuantity) + "  |  Uncollected cash: $" + ToString(cash)),
+      // Same state-in-key fix as RoleStatusEntry/RoleModelEntry above --
+      // this row's text depends on level.currentQuantity/cash, which can
+      // change (restock/collect) without the key changing otherwise.
+      TerminalUI.MakeEntry(1, "stock_status_" + ToString(level.currentQuantity) + "_" + ToString(cash), resource.DisplayName() + ": " + ToString(level.currentQuantity) + "/" + ToString(level.maxQuantity) + "  |  Uncollected cash: $" + ToString(cash)),
       TerminalUI.RestockEntry(game, def, resource),
       TerminalUI.CollectEntry(game, def)
     ];
@@ -245,17 +297,17 @@ public class TerminalUI {
   public static func RestockEntry(game: GameInstance, def: BizDef, resource: ref<Resource>) -> SDocumentThumbnailWidgetPackage {
     let level = CorpoBizState.GetSupplyLevel(game, def.id, resource);
     if level.currentQuantity >= level.maxQuantity {
-      return TerminalUI.MakeEntry(2, "stock_restock", resource.DisplayName() + " stock full (" + ToString(level.maxQuantity) + ")");
+      return TerminalUI.MakeEntry(2, "stock_restock_full", resource.DisplayName() + " stock full (" + ToString(level.maxQuantity) + ")");
     }
-    return TerminalUI.MakeEntry(2, "stock_restock", "Restock " + resource.DisplayName() + " +30 -- $" + ToString(def.restockCostPer10Percent * 3));
+    return TerminalUI.MakeEntry(2, "stock_restock_" + ToString(level.currentQuantity), "Restock " + resource.DisplayName() + " +30 -- $" + ToString(def.restockCostPer10Percent * 3));
   }
 
   public static func CollectEntry(game: GameInstance, def: BizDef) -> SDocumentThumbnailWidgetPackage {
     let cash = CorpoBizState.GetAccruedCash(game, def.id);
     if cash <= 0 {
-      return TerminalUI.MakeEntry(3, "stock_collect", "No cash to collect");
+      return TerminalUI.MakeEntry(3, "stock_collect_empty", "No cash to collect");
     }
-    return TerminalUI.MakeEntry(3, "stock_collect", "Collect $" + ToString(cash));
+    return TerminalUI.MakeEntry(3, "stock_collect_" + ToString(cash), "Collect $" + ToString(cash));
   }
 
   public static func MakeMenuButton(widgetName: String, displayName: String, iconID: CName) -> SComputerMenuButtonWidgetPackage {
@@ -276,9 +328,26 @@ protected func InitializeMailsThumbnails(widgetsData: script_ref<array<SDocument
   let game = this.GetOwner().GetGame();
   let mod = TerminalUI.FindBiz(this);
   if IsDefined(mod) {
-    widgetsData = TerminalUI.Dashboard(game, mod);
+    // Empty -- the ink dashboard (CorpoBizWebUI) is now the whole Biz
+    // tab's display AND click handling (real inkRectangle buttons with
+    // their own RegisterToCallback handlers), not a decorative overlay
+    // on top of this vanilla thumbnail list anymore. TerminalUI.Dashboard/
+    // HandleSelection and friends below are unused for Biz now but left
+    // in place rather than ripped out in the same pass as a working
+    // rewrite -- clean up once the ink UI is fully proven.
+    let empty: array<SDocumentThumbnailWidgetPackage>;
+    widgetsData = empty;
   }
   wrappedMethod(widgetsData);
+  // Render AFTER wrappedMethod, not before -- menu_mails (the canvas
+  // CorpoBizWebUI.FindMailCanvas looks for) is likely only actually
+  // constructed by the vanilla method's own processing of widgetsData,
+  // not before it. On a cold terminal-open this is the first-ever call,
+  // so querying for menu_mails beforehand found nothing (target_found=0)
+  // -- confirmed via debug Facts.
+  if IsDefined(mod) {
+    CorpoBizWebUI.Render(this, game, mod.Def());
+  }
 }
 
 // The top tab bar. Reconstructed wholesale for a matched business's
@@ -290,8 +359,16 @@ protected func InitializeMailsThumbnails(widgetsData: script_ref<array<SDocument
 // to the Mail panel we already drive above -- no new content panel needed.
 @wrapMethod(ComputerInkGameController)
 protected func InitializeMenuButtons(widgetsData: script_ref<array<SComputerMenuButtonWidgetPackage>>) -> Void {
+  // TEMPORARY DEBUG -- see FindBiz's own debug comment. This counts
+  // calls to *this specific method* (and whether it matched) separately
+  // from FindBiz's shared counter, since InitializeMailsThumbnails also
+  // calls FindBiz and would otherwise be indistinguishable from this one.
+  let quests = GameInstance.GetQuestsSystem(this.GetOwner().GetGame());
+  quests.SetFact(n"corpobiz_debug_menubtns_calls", quests.GetFact(n"corpobiz_debug_menubtns_calls") + 1);
+
   let mod = TerminalUI.FindBiz(this);
   if IsDefined(mod) {
+    quests.SetFact(n"corpobiz_debug_menubtns_matched", quests.GetFact(n"corpobiz_debug_menubtns_matched") + 1);
     widgetsData = [
       TerminalUI.MakeMenuButton("internet", "Gameplay-Devices-Computers-Common-Internet", n"iconInternet"),
       TerminalUI.MakeMenuButton("devices", "Gameplay-Devices-Computers-Common-System", n"iconNetwork"),
@@ -303,7 +380,19 @@ protected func InitializeMenuButtons(widgetsData: script_ref<array<SComputerMenu
 
 @wrapMethod(ComputerInkGameController)
 protected cb func OnDocumentThumbnailCallback(e: wref<inkPointerEvent>) -> Bool {
-  if e.IsAction(n"click") || e.IsAction(n"click_devices") || e.IsAction(n"tap") {
+  // Was `e.IsAction(n"click") || e.IsAction(n"click_devices") || e.IsAction(n"tap")`
+  // -- confirmed via debug Facts that a single mouse click delivers TWO
+  // separate events to this callback, one satisfying "click" and a second
+  // satisfying "click_devices" (dispatch counter went up by 2 per click,
+  // with prev_action=1/click then last_action=2/click_devices) -- so
+  // OR-ing both in meant every click ran HandleSelection twice, causing
+  // real double charges (two independent RemoveItem calls both succeeding
+  // before either's state write was visible to the other). Handling only
+  // "click" here fixes mouse input; "tap" is kept for touch/gamepad,
+  // unconfirmed whether it has the same double-fire issue as
+  // "click_devices" did -- watch for it if controller input is ever
+  // tested.
+  if e.IsAction(n"click") || e.IsAction(n"tap") {
     let controller = e.GetCurrentTarget().GetController() as ComputerDocumentThumbnailWidgetController;
     if IsDefined(controller) {
       let address = controller.GetDocumentAdress();
@@ -312,6 +401,26 @@ protected cb func OnDocumentThumbnailCallback(e: wref<inkPointerEvent>) -> Bool 
         if IsDefined(mod) {
           let game = this.GetOwner().GetGame();
           let player = GameInstance.GetPlayerSystem(game).GetLocalPlayerMainGameObject();
+          // TEMPORARY DEBUG -- testing whether a single physical click
+          // dispatches HandleSelection more than once (e.g. press+release
+          // each separately satisfying IsAction checks). Counter plus
+          // which action type matched, per dispatch. Remove once resolved.
+          let quests = GameInstance.GetQuestsSystem(game);
+          quests.SetFact(n"corpobiz_debug_thumbnail_dispatch_count", quests.GetFact(n"corpobiz_debug_thumbnail_dispatch_count") + 1);
+          quests.SetFact(n"corpobiz_debug_thumbnail_last_docid", address.documentID);
+          // Shift the previous dispatch's action into "prev" before
+          // recording this one, so two back-to-back dispatches from one
+          // click leave both actions readable afterward (otherwise the
+          // second dispatch's write would clobber the first's before we
+          // ever get to read it).
+          quests.SetFact(n"corpobiz_debug_thumbnail_prev_action", quests.GetFact(n"corpobiz_debug_thumbnail_last_action"));
+          if e.IsAction(n"click") {
+            quests.SetFact(n"corpobiz_debug_thumbnail_last_action", 1);
+          } else if e.IsAction(n"click_devices") {
+            quests.SetFact(n"corpobiz_debug_thumbnail_last_action", 2);
+          } else {
+            quests.SetFact(n"corpobiz_debug_thumbnail_last_action", 3);
+          }
           TerminalUI.HandleSelection(game, player, mod, address.documentID);
           this.RequestMailThumbnailWidgetsUpdate();
         }

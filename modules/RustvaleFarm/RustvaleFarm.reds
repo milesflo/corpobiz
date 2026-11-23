@@ -27,17 +27,19 @@ import CorpoBiz.*
 public class RustvaleFarmModule extends BizModule {
 
   public func Def() -> BizDef {
+    // Scalar/Vector4 fields assigned BEFORE any array-of-struct field --
+    // see SeventhHell.reds's Def() comment for why.
     let def: BizDef;
     def.id = n"rustvale_farm";
     def.displayName = "Rustvale Farm";
     def.purchasePrice = 6000;
-    def.prereqs = [];
     def.terminalPosition = new Vector4(0.0, 0.0, 0.0, 1.0);
+    def.restockCostPer10Percent = 0;
+    def.stockDecayPerDayPerActiveRole = 0;
+    def.prereqs = [this.NoPrereq()];
     def.roles = [this.GetRole(n"farmer1"), this.GetRole(n"farmer2"), this.GetRole(n"farmer3"), this.GetRole(n"farmer4")];
     def.inputs = [];
     def.outputs = [this.GrainResource()];
-    def.restockCostPer10Percent = 0;
-    def.stockDecayPerDayPerActiveRole = 0;
     return def;
   }
 
@@ -47,6 +49,20 @@ public class RustvaleFarmModule extends BizModule {
   // consumes BizDef.outputs yet (see class comment above).
   private func GrainResource() -> ref<Resource> {
     return SimpleResource.Create(n"grain", "Grain", 32, 60);
+  }
+
+  // No real purchase gate for this business yet -- a trivially-satisfied
+  // Level prereq (every player is at least level 1) instead of an empty
+  // `def.prereqs = []` literal, since every other BizDef in this codebase
+  // (7th Hell) always populates prereqs with at least one real element,
+  // and array<Struct> is already known to be a fragile, different
+  // compiler path in this redscript build (see AGENTS.md) -- an empty
+  // struct-array literal is untested territory this sidesteps entirely.
+  private func NoPrereq() -> BizPrereq {
+    let p: BizPrereq;
+    p.kind = BizPrereqKind.Level;
+    p.requiredLevel = 1;
+    return p;
   }
 
   // 4 interchangeable Farmer slots -- it doesn't matter which Farmer is

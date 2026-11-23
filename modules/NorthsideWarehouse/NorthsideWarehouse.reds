@@ -24,17 +24,19 @@ import CorpoBiz.*
 public class NorthsideWarehouseModule extends BizModule {
 
   public func Def() -> BizDef {
+    // Scalar/Vector4 fields assigned BEFORE any array-of-struct field --
+    // see SeventhHell.reds's Def() comment for why.
     let def: BizDef;
     def.id = n"northside_warehouse";
     def.displayName = "Northside Warehouse";
     def.purchasePrice = 10000;
-    def.prereqs = [];
     def.terminalPosition = new Vector4(0.0, 0.0, 0.0, 1.0);
+    def.restockCostPer10Percent = 0;
+    def.stockDecayPerDayPerActiveRole = 0;
+    def.prereqs = [this.NoPrereq()];
     def.roles = [this.GetRole(n"driver1"), this.GetRole(n"driver2"), this.GetRole(n"driver3"), this.GetRole(n"guard")];
     def.inputs = [];
     def.outputs = [this.GrainResource(), this.AlcoholResource()];
-    def.restockCostPer10Percent = 0;
-    def.stockDecayPerDayPerActiveRole = 0;
     return def;
   }
 
@@ -46,6 +48,16 @@ public class NorthsideWarehouseModule extends BizModule {
 
   private func AlcoholResource() -> ref<Resource> {
     return SimpleResource.Create(n"alcohol", "Alcohol", 0, 150);
+  }
+
+  // No real purchase gate for this business yet -- see RustvaleFarm's
+  // own NoPrereq() comment for why this is a trivially-satisfied Level
+  // prereq instead of an empty `def.prereqs = []` literal.
+  private func NoPrereq() -> BizPrereq {
+    let p: BizPrereq;
+    p.kind = BizPrereqKind.Level;
+    p.requiredLevel = 1;
+    return p;
   }
 
   // 3 interchangeable Driver slots (same pattern as Rustvale Farm's
