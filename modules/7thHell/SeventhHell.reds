@@ -59,63 +59,14 @@ public class SeventhHellModule extends BizModule {
   // with methods.
   public func GetRole(id: CName) -> BizRoleDef {
     if Equals(id, n"bouncer") {
-      return this.MakeRole(n"bouncer", r"base/characters/entities/gang/gang__cyberpunk_ma.ent", -1941.50, -57.13, 7.45, -74.15, 400, 150);
+      return MakeBizRole(n"bouncer", r"base/characters/entities/gang/gang__cyberpunk_ma.ent", -1941.50, -57.13, 7.45, -74.15, 400, 150);
     }
     if Equals(id, n"dj") {
-      return this.MakeRole(n"dj", r"base/characters/entities/citizen/citizen__rich_ma.ent", -1912.52, -42.24, -0.53, 91.80, 350, 200);
+      return MakeBizRole(n"dj", r"base/characters/entities/citizen/citizen__rich_ma.ent", -1912.52, -42.24, -0.53, 91.80, 350, 200);
     }
-    return this.MakeRole(n"dancer", r"base/quest/main_quests/prologue/q004/lizzies_club/characters/lizzies_customer_female_middle_bd.ent", -1928.49, -42.23, -0.69, 86.20, 350, 200);
+    return MakeBizRole(n"dancer", r"base/quest/main_quests/prologue/q004/lizzies_club/characters/lizzies_customer_female_middle_bd.ent", -1928.49, -42.23, -0.69, 86.20, 350, 200);
   }
 
-  // Look variants for the Staff page's "change model" action. Reuses
-  // templates already confirmed to spawn correctly for these roles, rather
-  // than guessing at unverified vanilla entity paths.
-  public func RoleVariantCount(id: CName) -> Int32 {
-    return 4;
-  }
-
-  public func RoleVariantTemplatePath(id: CName, variant: Int32) -> ResRef {
-    if variant == 0 {
-      return r"base/characters/entities/service/service__municipial_ma.ent";
-    }
-    if variant == 1 {
-      return r"base/characters/entities/gang/gang__cyberpunk_ma.ent";
-    }
-    if variant == 2 {
-      return r"base/characters/entities/citizen/citizen__rich_ma.ent";
-    }
-    return r"base/quest/main_quests/prologue/q004/lizzies_club/characters/lizzies_customer_female_middle_bd.ent";
-  }
-
-  public func RoleVariantName(id: CName, variant: Int32) -> String {
-    if variant == 0 {
-      return "Style 1";
-    }
-    if variant == 1 {
-      return "Style 2";
-    }
-    if variant == 2 {
-      return "Style 3";
-    }
-    return "Style 4";
-  }
-
-  private func MakeRole(id: CName, templatePath: ResRef, x: Float, y: Float, z: Float, yaw: Float, hireCost: Int32, revenuePerDay: Int32) -> BizRoleDef {
-    let role: BizRoleDef;
-    role.id = id;
-    role.templatePath = templatePath;
-    role.position = new Vector4(x, y, z, 1.0);
-    role.orientation = this.YawToQuat(yaw);
-    role.hireCost = hireCost;
-    role.revenuePerDay = revenuePerDay;
-    return role;
-  }
-
-  private func YawToQuat(yaw: Float) -> Quaternion {
-    let angles: EulerAngles;
-    angles.Yaw = yaw;
-    return angles.ToQuat();
-  }
 }
 
 // Self-registration: base/Registry.reds never names this module, so this

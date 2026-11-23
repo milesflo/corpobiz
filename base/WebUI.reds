@@ -46,17 +46,8 @@ public class CorpoBizWebUI {
     // Reparenting onto menu_mails (the actual Mail/Biz tab's own canvas)
     // instead means the game's native tab show/hide logic covers our
     // visibility for free.
-    // TEMPORARY DEBUG -- corpobiz_web_dashboard missing from the tree
-    // entirely after the ink-buttons rewrite (target_found=0). Isolating
-    // whether GetRootCompoundWidget() itself is failing now that it's
-    // called via the controller parameter inside this class, versus the
-    // FindMailCanvas climb failing. Remove once resolved.
-    let quests = GameInstance.GetQuestsSystem(game);
-    quests.SetFact(n"corpobiz_debug_webui_controller_defined", IsDefined(controller) ? 1 : 0);
     let rawRoot = controller.GetRootCompoundWidget();
-    quests.SetFact(n"corpobiz_debug_webui_raw_root_defined", IsDefined(rawRoot) ? 1 : 0);
     let target = CorpoBizWebUI.FindMailCanvas(rawRoot);
-    quests.SetFact(n"corpobiz_debug_webui_target_found", IsDefined(target) ? 1 : 0);
     if !IsDefined(target) {
       return;
     }
