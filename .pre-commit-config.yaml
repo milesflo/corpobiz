@@ -1,7 +1,11 @@
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
+      # Scans staged changes only (so it's a no-op under --all-files); CI runs
+      # gitleaks over full history separately.
       - id: gitleaks
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -10,3 +14,45 @@ repos:
       - id: detect-private-key
       - id: check-added-large-files
         args: ["--maxkb=1024"]
+
+  - repo: local
+    hooks:
+      # Patterns the redscript compiler is known to reject or mis-handle in
+      # this project's build -- see AGENTS.md. Line-anchored/regex-only, so
+      # no game install needed (runs in CI too).
+      # shortcut: blanket ban on .PushBack/.Size may false-positive on
+      #   native-element arrays; relax if that actually bites.
+      - id: reds-no-array-methods
+        name: "redscript: no .PushBack()/.Size() (use ArrayPush / for-in, see AGENTS.md)"
+        language: pygrep
+        entry: '\.(PushBack|Size)\('
+        files: '\.reds$'
+      - id: reds-no-static-let
+        name: "redscript: no `static let` fields (use a ScriptableSystem instance field, see AGENTS.md)"
+        language: pygrep
+        entry: '^\s*((public|private|protected)\s+)?static\s+let\b'
+        files: '\.reds$'
+      - id: reds-raw-string-backslash
+        name: 'redscript: no backslashes in r"..." paths (use forward slashes, see AGENTS.md)'
+        language: pygrep
+        entry: '\br"[^"]*\\'
+        files: '\.reds$'
+      - id: reds-no-debug-leftovers
+        name: "redscript: no leftover TEMPORARY DEBUG blocks / corpobiz_debug_ Facts"
+        language: pygrep
+        entry: 'TEMPORARY DEBUG|corpobiz_debug_'
+        files: '\.reds$'
+
+      # The only real type-check. Needs the game install + wine, so it's
+      # local-only (pre-push, not run in CI) and skips itself when the
+      # environment isn't there. Note `make compile` deploys into the game dir.
+      - id: redscript-compile
+        name: "redscript: make compile (skips if game env unavailable)"
+        language: system
+        entry: >-
+          bash -c 'make -s doctor >/dev/null 2>&1 ||
+          { echo "skipped: game environment not set up (run make doctor)"; exit 0; };
+          make compile'
+        files: '\.reds$|^Makefile$'
+        pass_filenames: false
+        stages: [pre-push]

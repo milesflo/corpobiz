@@ -171,10 +171,19 @@ full game relaunch.
 
 ## Contributing
 
-This repo scans for secrets/private keys before every commit via
-[pre-commit](https://pre-commit.com). One-time setup after cloning:
+Checks run via [pre-commit](https://pre-commit.com). One-time setup after
+cloning (installs both the pre-commit and pre-push hooks):
 
 ```sh
 pip install pre-commit  # or: pipx install pre-commit
 pre-commit install
 ```
+
+- **On commit:** secret/private-key scanning, plus grep checks for patterns
+  the redscript compiler is known to reject (see `AGENTS.md`) and leftover
+  debug instrumentation.
+- **On push:** `make compile`, the only real type-check. It needs the game
+  install (see [Fast local iteration](#fast-local-iteration-no-game-launch-needed))
+  and skips itself if that isn't set up.
+- **In CI:** the commit-time checks plus a full-history gitleaks scan. CI
+  can't compile redscript -- `scc` needs the game's own `final.redscripts`.

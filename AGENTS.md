@@ -18,6 +18,14 @@ re-deriving it would waste a lot of turns. If a project doc elsewhere
 - `make deploy` alone, if you just want the files copied without compiling.
 - Override `GAME_DIR` / `APP_ID` / `PROTONTRICKS` as `make VAR=value ...`
   if the Steam library lives somewhere else.
+- **Before every commit, run `pre-commit run --all-files` and `make compile`
+  yourself.** Commits made with `git-commit-api` (the required agent commit
+  path) are created through the GitHub API, so the local git pre-commit /
+  pre-push hooks never fire for them -- only CI backs you up, and CI can't
+  compile redscript. The pre-commit config's grep hooks encode the gotchas
+  below; if one blocks you, fix the code, don't loosen the hook without a
+  failing compile to justify it. The gitleaks hook only scans *staged*
+  changes, so `git add` first or it checks nothing.
 
 ## redscript (.reds) language gotchas
 
