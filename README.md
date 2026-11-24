@@ -21,6 +21,27 @@ in-world site picked out yet (`terminalPosition`/role `position` are
 `(0,0,0,1)` placeholders) -- that's independent of everything else and
 can be filled in whenever someone scouts locations.
 
+```mermaid
+graph LR
+    Farm[Rustvale Farm]
+    Distillery[Watson Distillery]
+    Bar[7th Hell]
+    Warehouse[Northside Warehouse<br/>buffers Grain + Alcohol]
+
+    Farm -- produces --> Grain((Grain))
+    Grain -- consumed by --> Distillery
+    Distillery -- produces --> Alcohol((Alcohol))
+    Alcohol -- consumed by --> Bar
+
+    Grain -.-> Warehouse
+    Alcohol -.-> Warehouse
+```
+
+(Dotted lines = Northside Warehouse's buffering role; actually moving a
+resource between businesses isn't wired up yet -- see
+[Inputs/outputs](#inputsoutputs-supply-chains--modeled-not-fully-playable-yet)
+below.)
+
 ## How it's structured
 
 - `base/` — the generic CorpoBiz framework (`module CorpoBiz`). Knows
