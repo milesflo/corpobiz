@@ -147,3 +147,13 @@ wine engine/tools/scc.exe -compile r6/scripts \
 (`z:/`-prefixed, forward slashes) alongside `r6/scripts` so the compiler can
 resolve Codeware types. This catches script errors in seconds instead of a
 full game relaunch.
+
+## Contributing
+
+This repo scans for secrets/private keys before every commit via
+[pre-commit](https://pre-commit.com). One-time setup after cloning:
+
+```sh
+pip install pre-commit  # or: pipx install pre-commit
+pre-commit install
+```
