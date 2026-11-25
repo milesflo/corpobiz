@@ -172,7 +172,7 @@ full game relaunch.
 ## Contributing
 
 Checks run via [pre-commit](https://pre-commit.com). One-time setup after
-cloning (installs both the pre-commit and pre-push hooks):
+cloning (installs the pre-commit, commit-msg and pre-push hooks):
 
 ```sh
 pip install pre-commit  # or: pipx install pre-commit
@@ -181,9 +181,52 @@ pre-commit install
 
 - **On commit:** secret/private-key scanning, plus grep checks for patterns
   the redscript compiler is known to reject (see `AGENTS.md`) and leftover
-  debug instrumentation.
+  debug instrumentation. The commit message must be a
+  [conventional commit](#commit-messages-and-releases).
 - **On push:** `make compile`, the only real type-check. It needs the game
   install (see [Fast local iteration](#fast-local-iteration-no-game-launch-needed))
   and skips itself if that isn't set up.
 - **In CI:** the commit-time checks plus a full-history gitleaks scan. CI
   can't compile redscript -- `scc` needs the game's own `final.redscripts`.
+
+### Commit messages and releases
+
+Commit messages and PR titles are conventional commits:
+`type(optional-scope): description`, with `type` one of `feat`, `fix`,
+`perf`, `revert`, `docs`, `style`, `refactor`, `test`, `build`, `ci`,
+`chore`. They drive the version number, so pick the type deliberately:
+
+| Commit | Release |
+|---|---|
+| `feat: ...` | minor (0.1.0 → 0.2.0) |
+| `fix: ...`, `perf: ...`, `revert: ...` | patch (0.1.0 → 0.1.1) |
+| `feat!: ...` or a `BREAKING CHANGE:` footer | major (0.1.0 → 1.0.0) |
+| `docs`, `style`, `refactor`, `test`, `build`, `ci`, `chore` | none |
+
+This is a monorepo: **Base and each module are versioned independently.** A
+component is `base` or a folder under `modules/` (e.g. `7thHell`), tagged
+`<component>-vX.Y.Z` (`base-v0.2.0`, `7thHell-v0.1.1`). A commit counts toward
+a component only if it touches that component's directory, so a `fix` in one
+business doesn't release the others. A commit touching several components
+counts for each. Changes outside every component (`tools/`, `assets/`, docs,
+workflows) never release anything.
+
+When a releasable commit lands on `main`, the Release workflow gives each
+affected component its own GitHub release: the next version counted from that
+component's last tag, notes grouped from its commits, then a build at that tag
+with the zip attached (`CorpoBiz-Base-vX.Y.Z.zip`, `CorpoBiz-7th-Hell-vX.Y.Z.zip`,
+...). A component with no tag yet publishes the version already in its
+`info.json` on its first releasable commit. Each zip holds that mod's
+`info.json` (version stamped to the release) and its sources under
+`scripts/CorpoBiz/`, in the REDmod folder layout. The repo's own `info.json`
+versions are only the seed for a first release and are never rewritten.
+
+Modules declare which Base versions they work with in their own `info.json`
+(`dependencies`). That range is edited by hand: a breaking Base release does
+not update it for you, so bump the modules' constraint when Base breaks them.
+
+If you squash-merge, set the repo's squash default to the PR title so the
+merge commit is conventional. The gate is `tools/release/release.py`, which
+also computes versions, so the two can't disagree. Build one component's zip
+locally with `python3 tools/release/release.py build base 0.1.0` (output in
+`dist/`, ignored by git).

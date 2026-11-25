@@ -18,6 +18,11 @@ re-deriving it would waste a lot of turns. If a project doc elsewhere
 - `make deploy` alone, if you just want the files copied without compiling.
 - Override `GAME_DIR` / `APP_ID` / `PROTONTRICKS` as `make VAR=value ...`
   if the Steam library lives somewhere else.
+- **Commit messages are conventional commits** (`feat: ...`, `fix(scope): ...`,
+  `docs: ...`; see README "Commit messages and releases"), and `feat`/`fix`
+  merged to `main` cut a release, so pick the type deliberately. The
+  `git-commit-api` path skips the local commit-msg hook: check your subject
+  first with `python3 tools/release/release.py check-title "<subject>"`.
 - **Before every commit, run `pre-commit run --all-files` and `make compile`
   yourself.** Commits made with `git-commit-api` (the required agent commit
   path) are created through the GitHub API, so the local git pre-commit /

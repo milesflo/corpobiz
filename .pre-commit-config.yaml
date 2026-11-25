@@ -1,4 +1,4 @@
-default_install_hook_types: [pre-commit, pre-push]
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
 
 repos:
   - repo: https://github.com/gitleaks/gitleaks
@@ -42,6 +42,21 @@ repos:
         language: pygrep
         entry: 'TEMPORARY DEBUG|corpobiz_debug_'
         files: '\.reds$'
+
+      # Commit messages must be conventional commits (`feat: ...`,
+      # `fix(scope): ...`, `feat!: ...`). The same parser decides release
+      # versions, so the gate and the releases can't disagree. See README.
+      - id: conventional-commit
+        name: "commit message: conventional commits (feat/fix/docs/..., see README)"
+        language: system
+        entry: python3 tools/release/release.py check-msg
+        stages: [commit-msg]
+      - id: release-tests
+        name: "release tooling tests"
+        language: system
+        entry: python3 -m unittest discover -s tools/release
+        files: '^tools/release/'
+        pass_filenames: false
 
       # The only real type-check. Needs the game install + wine, so it's
       # local-only (pre-push, not run in CI) and skips itself when the
