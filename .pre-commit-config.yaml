@@ -50,7 +50,7 @@ repos:
         name: "brand: assets/brand logos match modules (fix with make logos)"
         language: system
         entry: python3 tools/brand/gen_logos.py --check
-        files: '^modules/.*\.reds$|^tools/brand/|^assets/brand/'
+        files: '^modules/.*\.json$|^base/info\.json$|^tools/brand/|^assets/brand/'
         pass_filenames: false
 
       # The only real type-check. Needs the game install + wine, so it's

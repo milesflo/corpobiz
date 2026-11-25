@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate CorpoBiz logo assets: the base logo, the icon, and one 16:9 card per
-business module (named from each module's `def.displayName`). Writes SVG, plus
+mod, including Base (named from each mod's info.json). Writes SVG, plus
 PNG when rsvg-convert is installed. Stdlib only: text is drawn from the outlined
 glyphs in glyphs.json (see extract_glyphs.py), so no fonts are needed.
 
@@ -10,7 +10,6 @@ glyphs in glyphs.json (see extract_glyphs.py), so no fonts are needed.
 Design rules live in BRAND.md.
 """
 import json
-import re
 import shutil
 import subprocess
 import sys
@@ -78,7 +77,7 @@ def mark(cut):
 
 
 def card(name):
-    """1280x720 logo. name=None gives the base logo (no business line)."""
+    """1280x720 logo. name=None gives the generic logo (no name line)."""
     shift = 28 if name is None else 0
     word = "CORPOBIZ"
     size = 132
@@ -136,12 +135,12 @@ def icon():
 
 
 def modules():
-    """(folder, displayName) for every module, read from its def.displayName."""
+    """(file stem, card name) for the base mod and every module, from each
+    info.json "name" with the "CorpoBiz - " prefix dropped."""
     found = []
-    for src in sorted(ROOT.glob("modules/*/*.reds")):
-        m = re.search(r'def\.displayName\s*=\s*"([^"]+)"', src.read_text())
-        if m:
-            found.append((src.parent.name, m.group(1)))
+    for info in [ROOT / "base" / "info.json", *sorted(ROOT.glob("modules/*/info.json"))]:
+        name = json.loads(info.read_text())["name"].removeprefix("CorpoBiz - ")
+        found.append(("Base" if info.parent.name == "base" else info.parent.name, name))
     return found
 
 
