@@ -225,7 +225,20 @@ not update it for you, so bump the modules' constraint when Base breaks them.
 
 If you squash-merge, set the repo's squash default to the PR title so the
 merge commit is conventional. The gate and the release logic are both in
-`tools/release/release.py`. Build one component's zip locally with
-`python3 tools/release/release.py build base 0.1.0` (output in `dist/`, ignored
-by git), or see what the next push would release with
-`python3 tools/release/release.py next`.
+`tools/release/release.py`. Build one mod's zip locally with
+`make package MOD=7thHell` (or `MOD=base`; the version comes from its
+`info.json`, output in `dist/`, ignored by git), or see what the next push
+would release with `python3 tools/release/release.py next`.
+
+**Each module is a standalone mod whose only dependency is Base.** Its zip holds
+just its own `info.json` and sources, and its `info.json` declares
+`CorpoBiz - Base`. Two things check that:
+- `make compile-mod MOD=7thHell` compiles Base plus only that module (nothing
+  else from `modules/`), proving the module doesn't lean on any other module.
+  Plain `make compile` can't, since it compiles every module together.
+- Unit tests fail if a module declares anything other than Base, if Base's
+  version doesn't satisfy the module's `>=X.Y.Z` range, or if a module's zip
+  bundles Base's files.
+
+Base itself needs Codeware (a RED4ext plugin) at runtime, which no
+`info.json` declares.

@@ -1,3 +1,5 @@
+import json
+import re
 import tempfile
 import unittest
 import zipfile
@@ -72,6 +74,38 @@ class Notes(unittest.TestCase):
     def test_nothing_notable(self):
         self.assertEqual(release.notes_for([c("docs: a"), c("chore: b"), c("Add c")]), "")
         self.assertEqual(release.notes_for([]), "")
+
+
+class Dependencies(unittest.TestCase):
+    """Every module is a standalone mod whose only dependency is Base."""
+
+    def setUp(self):
+        (_, self.base_name, base_dir), *self.modules = release.components()
+        self.base_version = release.version_tuple(release.declared_version(base_dir))
+
+    def deps(self, directory):
+        return json.loads((directory / "info.json").read_text()).get("dependencies", [])
+
+    def test_base_is_every_modules_only_dependency(self):
+        for _, name, directory in self.modules:
+            self.assertEqual([d["name"] for d in self.deps(directory)], [self.base_name],
+                             f"{name} must depend on {self.base_name} and nothing else")
+
+    def test_base_version_satisfies_every_declared_range(self):
+        for _, name, directory in self.modules:
+            (dep,) = self.deps(directory)
+            m = re.fullmatch(r">=(\d+\.\d+\.\d+)", dep["version"])
+            self.assertTrue(m, f"{name}: only '>=X.Y.Z' ranges are supported, got {dep['version']!r}")
+            self.assertGreaterEqual(self.base_version, release.version_tuple(m.group(1)),
+                                    f"{name} needs Base >={m.group(1)}, but Base declares {self.base_version}")
+
+    def test_module_zip_contains_none_of_bases_files(self):
+        base_files = {p.name for p in (release.ROOT / "base").glob("*.reds")}
+        with tempfile.TemporaryDirectory() as tmp:
+            for cid, _, _ in self.modules:
+                with zipfile.ZipFile(release.build(cid, "1.0.0", tmp)) as z:
+                    shipped = {Path(n).name for n in z.namelist()}
+                    self.assertFalse(shipped & base_files, f"{cid}'s zip bundles Base files: {shipped & base_files}")
 
 
 class Monorepo(unittest.TestCase):

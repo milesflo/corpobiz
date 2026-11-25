@@ -18,6 +18,11 @@ SCRATCH_DIR := $(GAME_DIR)/_scratch
 PATHS_FILE  := $(SCRATCH_DIR)/paths_win.txt
 COMPILE_LOG := $(SCRATCH_DIR)/compile.log
 
+# What run-scc compiles and where its output goes (relative to GAME_DIR).
+# `compile` uses the defaults; compile-mod points them at an isolated copy.
+SCRIPTS_SRC ?= r6/scripts
+OUT_CACHE   ?= _scratch/test.redscripts
+
 # Codeware's own .reds files, which the standalone compiler needs listed
 # alongside r6/scripts to resolve Codeware types. Win-style (z:/-prefixed,
 # forward-slash) paths, as the Windows redscript compiler running under
@@ -32,7 +37,7 @@ CODEWARE_FILES := \
 
 .ONESHELL:
 SHELL := /bin/bash
-.PHONY: all deploy compile paths-file clean-deploy check-deps doctor
+.PHONY: all deploy compile run-scc compile-mod package paths-file clean-deploy check-deps doctor
 
 all: compile
 
@@ -139,9 +144,11 @@ paths-file:
 # found"). Any blocking "Compilation error" dialog is auto-dismissed from
 # the host X session (must run outside any flatpak sandbox, or xdotool
 # can't see the window) so this never hangs waiting for a click.
-compile: deploy paths-file
+compile: deploy run-scc
+
+run-scc: paths-file
 	rm -f "$(COMPILE_LOG)"
-	$(PROTONTRICKS) -c "cd '$(GAME_DIR)' && wine engine/tools/scc.exe -compile r6/scripts -compilePathsFile _scratch/paths_win.txt -outputCacheFile _scratch/test.redscripts r6/cache/final.redscripts" $(APP_ID) > "$(COMPILE_LOG)" 2>&1 &
+	$(PROTONTRICKS) -c "cd '$(GAME_DIR)' && wine engine/tools/scc.exe -compile $(SCRIPTS_SRC) -compilePathsFile _scratch/paths_win.txt -outputCacheFile $(OUT_CACHE) r6/cache/final.redscripts" $(APP_ID) > "$(COMPILE_LOG)" 2>&1 &
 	COMPILE_PID=$$!
 	export DISPLAY=:0
 	for i in $$(seq 1 40); do
@@ -163,3 +170,22 @@ compile: deploy paths-file
 	else
 		echo "COMPILE OK"
 	fi
+
+# Compiles Base plus ONE module and nothing else, the way a player who
+# installs only those two mods gets them. A module is meant to be standalone
+# with Base as its only dependency; `compile` can't prove that, since it
+# compiles every module together. Usage: make compile-mod MOD=7thHell
+compile-mod: check-deps
+	test -n "$(MOD)" && test -d "$(MODULES_DIR)/$(MOD)" || { echo "usage: make compile-mod MOD=<folder under $(MODULES_DIR)/>"; exit 1; }
+	rm -rf "$(SCRATCH_DIR)/isolated"
+	mkdir -p "$(SCRATCH_DIR)/isolated/scripts/modules"
+	cp -r "$(BASE_DIR)" "$(SCRATCH_DIR)/isolated/scripts/base"
+	cp -r "$(MODULES_DIR)/$(MOD)" "$(SCRATCH_DIR)/isolated/scripts/modules/$(MOD)"
+	$(MAKE) --no-print-directory run-scc SCRIPTS_SRC=_scratch/isolated/scripts OUT_CACHE=_scratch/isolated.redscripts
+
+# Builds one mod's standalone zip into dist/ (see README, "Commit messages and
+# releases"). VERSION defaults to the mod's info.json version.
+# Usage: make package MOD=7thHell   (or MOD=base)
+package:
+	test -n "$(MOD)" || { echo "usage: make package MOD=<base|folder under $(MODULES_DIR)/> [VERSION=x.y.z]"; exit 1; }
+	python3 tools/release/release.py build $(MOD) $(or $(VERSION),$(shell jq -r .version $(if $(filter base,$(MOD)),$(BASE_DIR),$(MODULES_DIR)/$(MOD))/info.json))

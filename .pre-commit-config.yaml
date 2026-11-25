@@ -55,7 +55,7 @@ repos:
         name: "release tooling tests"
         language: system
         entry: python3 -m unittest discover -s tools/release
-        files: '^tools/release/'
+        files: '^tools/release/|info\.json$'
         pass_filenames: false
 
       # The only real type-check. Needs the game install + wine, so it's

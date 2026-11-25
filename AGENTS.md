@@ -15,6 +15,10 @@ re-deriving it would waste a lot of turns. If a project doc elsewhere
   `check-deps` -> `deploy` -> the standalone redscript compiler, with
   compile-error dialogs auto-dismissed. Takes seconds; never launch the
   full game just to check whether a change compiles.
+- `make compile-mod MOD=<module>` -- compiles Base plus only that module. Run it
+  after touching a module's imports: it's the only thing that proves the module
+  stays standalone (Base as its sole dependency). `make package MOD=<module|base>`
+  builds that mod's zip into `dist/`.
 - `make deploy` alone, if you just want the files copied without compiling.
 - Override `GAME_DIR` / `APP_ID` / `PROTONTRICKS` as `make VAR=value ...`
   if the Steam library lives somewhere else.
