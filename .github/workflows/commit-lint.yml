@@ -1,0 +1,32 @@
+name: Commit lint
+
+# The gate: PR titles and commit messages must be conventional commits
+# (feat/fix/...), because they decide the next release version. Agent commits
+# made through the GitHub API skip local git hooks, so this is the check that
+# always runs.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the commit range needs history
+
+      # The PR title is untrusted input: pass it through env, never inline in the script.
+      - name: PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: python3 tools/release/release.py check-title "$TITLE"
+
+      - name: Commits in the PR
+        run: python3 tools/release/release.py check-range "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+
+      - name: Release tooling tests
+        run: python3 -m unittest discover -s tools/release

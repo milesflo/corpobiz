@@ -1,0 +1,73 @@
+name: Release
+
+# This is a monorepo: Base and each module are versioned independently, with
+# tags like `base-v0.2.0` and `7thHell-v0.1.1`. On every push to main, each
+# component with a releasable conventional commit (feat, fix, perf, revert, or
+# any breaking change) touching its directory since its last tag gets its own
+# GitHub release; then each is built at its own tag and its zip attached.
+#
+# The build is a job in this same workflow, not a separate `on: release`
+# workflow: releases created with the built-in token deliberately don't
+# trigger other workflows. The mod.io upload will be another job that
+# `needs: package`.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # create tags/releases and upload assets
+
+# Serialize runs; a queued run still sees every commit since each last tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      releases: ${{ steps.next.outputs.releases }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history and tags, to compute versions
+
+      - run: python3 -m unittest discover -s tools/release
+
+      # Prints `releases=[{"component","version","tag"},...]`, `[]` when nothing
+      # is due, and writes notes/<tag>.md for each.
+      - id: next
+        run: python3 tools/release/release.py next notes >> "$GITHUB_OUTPUT"
+
+      - name: Create releases
+        if: steps.next.outputs.releases != '[]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASES: ${{ steps.next.outputs.releases }}
+        run: |
+          jq -r '.[].tag' <<<"$RELEASES" | while read -r tag; do
+            gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file "notes/$tag.md" </dev/null
+          done
+
+  package:
+    needs: release
+    if: needs.release.outputs.releases != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.release.outputs.releases) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.tag }} # build exactly what was tagged
+
+      - name: Build the zip and attach it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ matrix.tag }}
+          COMPONENT: ${{ matrix.component }}
+          VERSION: ${{ matrix.version }}
+        run: |
+          python3 tools/release/release.py build "$COMPONENT" "$VERSION"
+          gh release upload "$TAG" dist/*.zip
