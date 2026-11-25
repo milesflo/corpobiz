@@ -1,0 +1,8 @@
+# Components that have an info.json version but are not published yet.
+# One component id per line (`base`, or a folder name under modules/). A held
+# component is skipped by the Release workflow even though its version has no
+# tag. To release one, delete its line and merge.
+7thHell
+NorthsideWarehouse
+RustvaleFarm
+WatsonDistillery

@@ -23,33 +23,55 @@ class Gate(unittest.TestCase):
         self.assertTrue(release.is_valid("Merge pull request #1 from a/b"))
 
 
-class Plan(unittest.TestCase):
-    def test_levels(self):
-        self.assertEqual(release.plan([c("feat: a")], (0, 1, 0))[0], (0, 2, 0))
-        self.assertEqual(release.plan([c("fix: a")], (0, 1, 0))[0], (0, 1, 1))
-        self.assertEqual(release.plan([c("perf: a")], (1, 2, 3))[0], (1, 2, 4))
-        self.assertEqual(release.plan([c("feat!: a")], (0, 1, 0))[0], (1, 0, 0))
-        self.assertEqual(release.plan([c("fix: a", "BREAKING CHANGE: x")], (1, 2, 3))[0], (2, 0, 0))
+class Status(unittest.TestCase):
+    TAGS = {(0, 1, 0): "base-v0.1.0", (0, 2, 0): "base-v0.2.0"}
 
-    def test_highest_level_wins(self):
-        self.assertEqual(release.plan([c("fix: a"), c("feat: b"), c("docs: c")], (1, 0, 0))[0], (1, 1, 0))
+    def test_untagged_version_is_due(self):
+        self.assertEqual(release.status("base", "0.1.0", {}, set()), "due")
+        self.assertEqual(release.status("base", "0.3.0", self.TAGS, set()), "due")
+        self.assertEqual(release.status("base", "1.0.0", self.TAGS, set()), "due")
 
-    def test_nothing_releasable(self):
-        self.assertEqual(release.plan([c("docs: a"), c("ci: b"), c("Add c")], (1, 0, 0)), (None, ""))
-        self.assertEqual(release.plan([], None), (None, ""))
-        self.assertEqual(release.plan([c("docs: a")], None), (None, ""))
+    def test_already_tagged_is_released(self):
+        self.assertEqual(release.status("base", "0.2.0", self.TAGS, set()), "released")
+        self.assertEqual(release.status("base", "0.1.0", self.TAGS, {"base"}), "released")
 
-    def test_first_release_publishes_the_declared_version(self):
-        # No tag yet: whatever the bump level, the first release is the seed version.
-        for subject in ["feat: a", "fix: a", "feat!: a"]:
-            self.assertEqual(release.plan([c(subject)], None, (0, 1, 0))[0], (0, 1, 0), subject)
-        self.assertEqual(release.plan([c("fix: a")], None, (2, 0, 5))[0], (2, 0, 5))
+    def test_held_component_is_not_published(self):
+        self.assertEqual(release.status("7thHell", "0.1.0", {}, {"7thHell"}), "held")
 
-    def test_notes(self):
-        _, notes = release.plan([c("feat(ui): shiny"), c("fix: bug"), c("feat!: gone")], (0, 1, 0))
+    def test_version_below_an_existing_release_is_an_error(self):
+        with self.assertRaises(SystemExit):
+            release.status("base", "0.1.5", self.TAGS, set())
+
+    def test_malformed_version_is_an_error(self):
+        for v in ["0.1", "v0.1.0", "0.1.0-dev", ""]:
+            with self.assertRaises(SystemExit, msg=v):
+                release.status("base", v, {}, set())
+
+    def test_load_held(self):
+        self.assertEqual(release.load_held("# c\nbase  # why\n\n7thHell\n", ["base", "7thHell", "x"]), {"base", "7thHell"})
+        with self.assertRaises(SystemExit):
+            release.load_held("typo\n", ["base"])
+
+    def test_the_real_hold_file_names_real_components(self):
+        ids = [cid for cid, _, _ in release.components()]
+        held = release.load_held(release.HELD_FILE.read_text(), ids)
+        self.assertNotIn("base", held, "base must be releasable")
+
+
+class Notes(unittest.TestCase):
+    def test_grouping(self):
+        notes = release.notes_for([c("feat(ui): shiny"), c("fix: bug"), c("feat!: gone"), c("perf: fast"), c("docs: x")])
         self.assertIn("## Breaking changes\n- gone (aaaaaaa)", notes)
         self.assertIn("## Features\n- **ui:** shiny (aaaaaaa)", notes)
-        self.assertIn("## Fixes\n- bug (aaaaaaa)", notes)
+        self.assertIn("## Fixes\n- bug (aaaaaaa)\n- fast (aaaaaaa)", notes)
+        self.assertNotIn("docs", notes)
+
+    def test_footer_marks_breaking(self):
+        self.assertIn("## Breaking changes", release.notes_for([c("fix: a", "BREAKING CHANGE: x")]))
+
+    def test_nothing_notable(self):
+        self.assertEqual(release.notes_for([c("docs: a"), c("chore: b"), c("Add c")]), "")
+        self.assertEqual(release.notes_for([]), "")
 
 
 class Monorepo(unittest.TestCase):
@@ -59,9 +81,9 @@ class Monorepo(unittest.TestCase):
         self.assertIn("7thHell", ids)
         self.assertEqual(len(ids), len(set(ids)))
 
-    def test_seed_version(self):
-        base = dict((cid, d) for cid, _, d in release.components())["base"]
-        self.assertEqual(len(release.seed_version(base)), 3)
+    def test_declared_versions_are_valid(self):
+        for _, _, directory in release.components():
+            release.version_tuple(release.declared_version(directory))
 
     def test_build_one_component(self):
         with tempfile.TemporaryDirectory() as tmp:

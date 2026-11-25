@@ -194,39 +194,38 @@ pre-commit install
 Commit messages and PR titles are conventional commits:
 `type(optional-scope): description`, with `type` one of `feat`, `fix`,
 `perf`, `revert`, `docs`, `style`, `refactor`, `test`, `build`, `ci`,
-`chore`. They drive the version number, so pick the type deliberately:
+`chore`. A `!` after the type or a `BREAKING CHANGE:` footer marks a breaking
+change. Commit types don't set versions; they group the release notes
+(Breaking changes / Features / Fixes).
 
-| Commit | Release |
-|---|---|
-| `feat: ...` | minor (0.1.0 → 0.2.0) |
-| `fix: ...`, `perf: ...`, `revert: ...` | patch (0.1.0 → 0.1.1) |
-| `feat!: ...` or a `BREAKING CHANGE:` footer | major (0.1.0 → 1.0.0) |
-| `docs`, `style`, `refactor`, `test`, `build`, `ci`, `chore` | none |
+This is a monorepo: **Base and each module are versioned independently**, and
+**each mod's `info.json` `version` is the authority.** A component is `base`
+or a folder under `modules/` (e.g. `7thHell`). To release one, bump the
+`version` in its `info.json` and merge to `main`. The Release workflow then
+cuts a GitHub release for every component whose `<component>-v<version>` tag
+doesn't exist yet (`base-v0.2.0`, `7thHell-v0.1.1`), with notes from the
+conventional commits that touched that component's directory since its last
+release. It builds at the tag and attaches that mod's zip
+(`CorpoBiz-Base-vX.Y.Z.zip`, `CorpoBiz-7th-Hell-vX.Y.Z.zip`, ...), which holds
+its `info.json` and its sources under `scripts/CorpoBiz/` in the REDmod folder
+layout.
 
-This is a monorepo: **Base and each module are versioned independently.** A
-component is `base` or a folder under `modules/` (e.g. `7thHell`), tagged
-`<component>-vX.Y.Z` (`base-v0.2.0`, `7thHell-v0.1.1`). A commit counts toward
-a component only if it touches that component's directory, so a `fix` in one
-business doesn't release the others. A commit touching several components
-counts for each. Changes outside every component (`tools/`, `assets/`, docs,
-workflows) never release anything.
-
-When a releasable commit lands on `main`, the Release workflow gives each
-affected component its own GitHub release: the next version counted from that
-component's last tag, notes grouped from its commits, then a build at that tag
-with the zip attached (`CorpoBiz-Base-vX.Y.Z.zip`, `CorpoBiz-7th-Hell-vX.Y.Z.zip`,
-...). A component with no tag yet publishes the version already in its
-`info.json` on its first releasable commit. Each zip holds that mod's
-`info.json` (version stamped to the release) and its sources under
-`scripts/CorpoBiz/`, in the REDmod folder layout. The repo's own `info.json`
-versions are only the seed for a first release and are never rewritten.
+- Merging commits without bumping the version releases nothing; the workflow
+  logs a reminder. Merging the same version twice never releases twice.
+- A version below the latest existing release fails the workflow.
+- `tools/release/unreleased.txt` holds back components that have a version but
+  aren't published yet (the businesses today). Delete a component's line to
+  release it.
+- Changes outside every component (`tools/`, `assets/`, docs, workflows) never
+  release anything.
 
 Modules declare which Base versions they work with in their own `info.json`
 (`dependencies`). That range is edited by hand: a breaking Base release does
 not update it for you, so bump the modules' constraint when Base breaks them.
 
 If you squash-merge, set the repo's squash default to the PR title so the
-merge commit is conventional. The gate is `tools/release/release.py`, which
-also computes versions, so the two can't disagree. Build one component's zip
-locally with `python3 tools/release/release.py build base 0.1.0` (output in
-`dist/`, ignored by git).
+merge commit is conventional. The gate and the release logic are both in
+`tools/release/release.py`. Build one component's zip locally with
+`python3 tools/release/release.py build base 0.1.0` (output in `dist/`, ignored
+by git), or see what the next push would release with
+`python3 tools/release/release.py next`.

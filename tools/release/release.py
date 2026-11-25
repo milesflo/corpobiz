@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Conventional-commit gate and per-component release helper (stdlib only).
 
-One parser serves the commit gate and the release logic, so they can't drift.
-
   release.py check-msg FILE          commit-msg hook: fail unless the first line is a conventional commit
   release.py check-title TITLE       CI: same check for a PR title
   release.py check-range A..B        CI: every non-merge commit in a range
@@ -12,14 +10,16 @@ One parser serves the commit gate and the release logic, so they can't drift.
                                      write that component's REDmod-layout zip (default OUT: dist/)
 
 This is a monorepo: Base and every module are versioned independently. A
-component is `base` or a folder under `modules/` (e.g. `7thHell`); its tags are
-`<component>-vX.Y.Z`. A commit counts toward a component only if it touches
-that component's directory.
+component is `base` or a folder under `modules/` (e.g. `7thHell`).
 
-Per component, from commits since its last tag: a breaking change (`type!:` or
-a `BREAKING CHANGE:` footer) bumps major, `feat` minor, `fix`/`perf`/`revert`
-patch; other types never release. A component with no tag yet publishes the
-version already in its info.json on its first releasable commit.
+**Each component's info.json "version" is the authority.** A component is due
+a release when `<component>-v<that version>` doesn't exist as a tag yet. To
+release, bump the version in info.json and merge. Commits never change a
+version on their own; they feed the release notes (feat/fix/breaking, from
+commits touching that component's directory since its last release).
+
+Components listed in unreleased.txt are held back: they have a version but are
+not published until removed from that file.
 """
 import json
 import re
@@ -29,12 +29,13 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+HELD_FILE = Path(__file__).parent / "unreleased.txt"
 
 TYPES = "feat|fix|perf|revert|docs|style|refactor|test|build|ci|chore"
 HEADER = re.compile(rf"^(?P<type>{TYPES})(?:\((?P<scope>[^()\s][^()]*)\))?(?P<bang>!)?: (?P<desc>\S.*)$")
 BREAKING = re.compile(r"^BREAKING[ -]CHANGE: ", re.M)
 VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
-LEVEL = {"feat": 2, "fix": 1, "perf": 1, "revert": 1}  # 3 (major) comes from breaking changes
+NOTE_TYPES = {"feat": "Features", "fix": "Fixes", "perf": "Fixes", "revert": "Fixes"}
 
 
 def parse(subject, body=""):
@@ -46,35 +47,52 @@ def parse(subject, body=""):
 
 
 def is_valid(subject):
-    # Git's own merge commits are exempt; release logic skips merges anyway.
+    # Git's own merge commits are exempt; release notes skip merges anyway.
     return subject.startswith("Merge ") or parse(subject) is not None
 
 
-def plan(commits, last, first=(0, 1, 0)):
-    """commits: [(sha, subject, body)]; last: (major, minor, patch) or None if never released;
-    first: the version to publish on a first release. Returns (new_version or None, notes)."""
-    level = 0
+def notes_for(commits):
+    """commits: [(sha, subject, body)]. Markdown grouped into Breaking changes / Features / Fixes,
+    or "" if nothing notable."""
     groups = {"Breaking changes": [], "Features": [], "Fixes": []}
     for sha, subject, body in commits:
         c = parse(subject, body)
         if not c:
             continue
-        lvl = 3 if c["breaking"] else LEVEL.get(c["type"], 0)
-        if not lvl:
-            continue
-        level = max(level, lvl)
-        scope = f"**{c['scope']}:** " if c["scope"] else ""
-        group = "Breaking changes" if c["breaking"] else "Features" if c["type"] == "feat" else "Fixes"
-        groups[group].append(f"- {scope}{c['desc']} ({sha[:7]})")
-    if not level:
-        return None, ""
-    if last is None:
-        new = first
-    else:
-        major, minor, patch = last
-        new = {3: (major + 1, 0, 0), 2: (major, minor + 1, 0), 1: (major, minor, patch + 1)}[level]
-    notes = "\n\n".join(f"## {name}\n" + "\n".join(lines) for name, lines in groups.items() if lines)
-    return new, notes + "\n"
+        group = "Breaking changes" if c["breaking"] else NOTE_TYPES.get(c["type"])
+        if group:
+            scope = f"**{c['scope']}:** " if c["scope"] else ""
+            groups[group].append(f"- {scope}{c['desc']} ({sha[:7]})")
+    body = "\n\n".join(f"## {name}\n" + "\n".join(lines) for name, lines in groups.items() if lines)
+    return body + "\n" if body else ""
+
+
+def version_tuple(version):
+    m = VERSION.match(version)
+    if not m:
+        raise SystemExit(f"version {version!r} is not MAJOR.MINOR.PATCH")
+    return tuple(int(g) for g in m.groups())
+
+
+def status(cid, version, tags, held):
+    """'released', 'held' or 'due' for `version` of component `cid`. `tags` maps each
+    existing release's (major, minor, patch) to its tag name. A version below an
+    existing release is an error, not a release."""
+    vt = version_tuple(version)
+    if vt in tags:
+        return "released"
+    if tags and vt < max(tags):
+        raise SystemExit(f"{cid}: info.json says {version}, but {tags[max(tags)]} already exists. "
+                         "Set the version above the latest release.")
+    return "held" if cid in held else "due"
+
+
+def load_held(text, ids):
+    held = {l.split("#")[0].strip() for l in text.splitlines() if l.split("#")[0].strip()}
+    unknown = held - set(ids)
+    if unknown:
+        raise SystemExit(f"{HELD_FILE.name} names unknown components: {', '.join(sorted(unknown))}")
+    return held
 
 
 def components():
@@ -83,33 +101,26 @@ def components():
             for info in [ROOT / "base" / "info.json", *sorted(ROOT.glob("modules/*/info.json"))]]
 
 
-def seed_version(directory):
-    v = json.loads((directory / "info.json").read_text())["version"]
-    m = VERSION.match(v)
-    if not m:
-        raise SystemExit(f"{directory.name}/info.json version {v!r} is not MAJOR.MINOR.PATCH")
-    return tuple(int(g) for g in m.groups())
+def declared_version(directory):
+    return json.loads((directory / "info.json").read_text())["version"]
 
 
 def git(*args):
     return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout
 
 
-def last_release(cid):
-    """(tag, (major, minor, patch)) of the component's latest tag, or (None, None)."""
-    try:
-        tag = git("describe", "--tags", "--abbrev=0", "--match", f"{cid}-v[0-9]*").strip()
-    except subprocess.CalledProcessError:
-        return None, None
-    m = re.fullmatch(rf"{re.escape(cid)}-v(\d+)\.(\d+)\.(\d+)", tag)
-    if not m:
-        raise SystemExit(f"tag {tag!r} is not {cid}-vMAJOR.MINOR.PATCH")
-    return tag, tuple(int(g) for g in m.groups())
+def release_tags(cid):
+    """{(major, minor, patch): tag} for the component's existing tags."""
+    found = {}
+    for tag in git("tag", "--list", f"{cid}-v*").split():
+        m = re.fullmatch(rf"{re.escape(cid)}-v(\d+)\.(\d+)\.(\d+)", tag)
+        if m:
+            found[tuple(int(g) for g in m.groups())] = tag
+    return found
 
 
 def commits_in(rng, path=None):
-    args = ["log", "--no-merges", "--format=%H%x1f%s%x1f%b%x1e", rng]
-    out = git(*args, *(["--", path] if path else []))
+    out = git("log", "--no-merges", "--format=%H%x1f%s%x1f%b%x1e", rng, *(["--", path] if path else []))
     return [tuple(rec.strip("\n").split("\x1f", 2)) for rec in out.split("\x1e") if rec.strip()]
 
 
@@ -145,6 +156,31 @@ def build(cid, version, out=None):
     return path
 
 
+def next_releases(notes_dir=None):
+    held = load_held(HELD_FILE.read_text() if HELD_FILE.exists() else "", [c[0] for c in components()])
+    releases = []
+    for cid, _, directory in components():
+        version = declared_version(directory)
+        tags = release_tags(cid)
+        state = status(cid, version, tags, held)
+        previous = tags[max(tags)] if tags else None
+        rng = f"{previous}..HEAD" if previous else "HEAD"
+        commits = commits_in(rng, f"{directory.relative_to(ROOT).as_posix()}/")
+        if state == "held":
+            print(f"{cid}: {version} is held back (see {HELD_FILE.name})", file=sys.stderr)
+        elif state == "released" and commits:
+            print(f"{cid}: {len(commits)} commit(s) since {previous}, but info.json still says {version}; "
+                  "bump it to release them", file=sys.stderr)
+        elif state == "due":
+            tag = f"{cid}-v{version}"
+            releases.append({"component": cid, "version": version, "tag": tag})
+            if notes_dir:
+                Path(notes_dir).mkdir(parents=True, exist_ok=True)
+                fallback = "Initial release.\n" if not previous else f"Release {version}.\n"
+                (Path(notes_dir) / f"{tag}.md").write_text(notes_for(commits) or fallback)
+    return releases
+
+
 def main(argv):
     cmd, args = (argv[1], argv[2:]) if len(argv) > 1 else ("", [])
     if cmd == "check-msg":
@@ -157,19 +193,7 @@ def main(argv):
         bad = [s for _, s, _ in commits_in(args[0]) if not is_valid(s)]
         return fail(bad) if bad else 0
     if cmd == "next":
-        notes_dir = Path(args[0]) if args else None
-        releases = []
-        for cid, _, directory in components():
-            tag, last = last_release(cid)
-            commits = commits_in(f"{tag}..HEAD" if tag else "HEAD", f"{directory.relative_to(ROOT).as_posix()}/")
-            new, notes = plan(commits, last, seed_version(directory))
-            if new:
-                version = "%d.%d.%d" % new
-                releases.append({"component": cid, "version": version, "tag": f"{cid}-v{version}"})
-                if notes_dir:
-                    notes_dir.mkdir(parents=True, exist_ok=True)
-                    (notes_dir / f"{cid}-v{version}.md").write_text(notes)
-        print("releases=" + json.dumps(releases, separators=(",", ":")))
+        print("releases=" + json.dumps(next_releases(args[0] if args else None), separators=(",", ":")))
         return 0
     if cmd == "build":
         print(build(args[0], args[1], args[2] if len(args) > 2 else None))
