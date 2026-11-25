@@ -4,7 +4,10 @@ name: Release
 # tags like `base-v0.2.0` and `7thHell-v0.1.1`. On every push to main, each
 # component with a releasable conventional commit (feat, fix, perf, revert, or
 # any breaking change) touching its directory since its last tag gets its own
-# GitHub release; then each is built at its own tag and its zip attached.
+# GitHub release, created as a DRAFT. Each is built at the release commit and
+# its zip attached to the draft; only then is the draft published. That order
+# matters: publishing is what creates the tag, and with release immutability
+# on, a published release's assets can no longer change.
 #
 # The build is a job in this same workflow, not a separate `on: release`
 # workflow: releases created with the built-in token deliberately don't
@@ -39,14 +42,14 @@ jobs:
       - id: next
         run: python3 tools/release/release.py next notes >> "$GITHUB_OUTPUT"
 
-      - name: Create releases
+      - name: Create draft releases
         if: steps.next.outputs.releases != '[]'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASES: ${{ steps.next.outputs.releases }}
         run: |
           jq -r '.[].tag' <<<"$RELEASES" | while read -r tag; do
-            gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file "notes/$tag.md" </dev/null
+            gh release create "$tag" --draft --target "$GITHUB_SHA" --title "$tag" --notes-file "notes/$tag.md" </dev/null
           done
 
   package:
@@ -60,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ matrix.tag }} # build exactly what was tagged
+          ref: ${{ github.sha }} # the commit the draft targets; its tag doesn't exist until publish
 
       - name: Build the zip and attach it to the release
         env:
@@ -71,3 +74,20 @@ jobs:
         run: |
           python3 tools/release/release.py build "$COMPONENT" "$VERSION"
           gh release upload "$TAG" dist/*.zip
+
+  # Last on purpose: publishing makes the release (and with immutability on, its
+  # assets and tag) permanent. If any package job fails, the drafts stay drafts.
+  publish:
+    needs: [release, package]
+    if: needs.release.outputs.releases != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the drafts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASES: ${{ needs.release.outputs.releases }}
+        run: |
+          jq -r '.[].tag' <<<"$RELEASES" | while read -r tag; do
+            gh release edit "$tag" --draft=false </dev/null
+          done
