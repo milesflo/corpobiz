@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="512" height="512" role="img" aria-label="CorpoBiz icon">
+<title>CorpoBiz icon</title>
+<rect width="144" height="144" fill="#12111b"/>
+<g transform="translate(12 12)">
+<path d="M100 24 L40 24 L22 42 L22 78 L40 96 L100 96 L100 80 L46 80 L38 72 L38 48 L46 40 L100 40 Z" fill="#fcee0a"/>
+<polygon points="60,10 68,10 68,110 60,110" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><polygon points="60,10 68,10 68,110 60,110" fill="#2de2e6"/>
+<rect x="58" y="4" width="12" height="12" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><rect x="58" y="4" width="12" height="12" fill="#2de2e6"/>
+<polygon points="64,47 77,60 64,73 51,60" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><polygon points="64,47 77,60 64,73 51,60" fill="#ff2a6d"/>
+<rect x="58" y="104" width="12" height="12" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><rect x="58" y="104" width="12" height="12" fill="#fcee0a"/>
+</g>
+</svg>

@@ -32,9 +32,14 @@ CODEWARE_FILES := \
 
 .ONESHELL:
 SHELL := /bin/bash
-.PHONY: all deploy compile paths-file clean-deploy check-deps doctor
+.PHONY: all deploy compile paths-file clean-deploy check-deps doctor logos
 
 all: compile
+
+# Regenerate assets/brand/ (base logo, icon, one 16:9 card per module).
+# Run after adding or renaming a module -- see BRAND.md.
+logos:
+	python3 tools/brand/gen_logos.py
 
 # Environment sanity check -- run this first on a new machine (e.g. after
 # moving this repo to a laptop) before `make compile`, since a missing

@@ -43,6 +43,16 @@ repos:
         entry: 'TEMPORARY DEBUG|corpobiz_debug_'
         files: '\.reds$'
 
+      # Fails when a module was added/renamed without regenerating its logo
+      # (or the generator changed): fix with `make logos`. Stdlib-only, so it
+      # runs in CI too. Checks SVGs only; PNGs are rendered from them.
+      - id: brand-logos-current
+        name: "brand: assets/brand logos match modules (fix with make logos)"
+        language: system
+        entry: python3 tools/brand/gen_logos.py --check
+        files: '^modules/.*\.reds$|^tools/brand/|^assets/brand/'
+        pass_filenames: false
+
       # The only real type-check. Needs the game install + wine, so it's
       # local-only (pre-push, not run in CI) and skips itself when the
       # environment isn't there. Note `make compile` deploys into the game dir.

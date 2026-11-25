@@ -18,6 +18,8 @@ re-deriving it would waste a lot of turns. If a project doc elsewhere
 - `make deploy` alone, if you just want the files copied without compiling.
 - Override `GAME_DIR` / `APP_ID` / `PROTONTRICKS` as `make VAR=value ...`
   if the Steam library lives somewhere else.
+- **Adding or renaming a module:** run `make logos` and commit `assets/brand/`
+  (see `BRAND.md`). The `brand-logos-current` hook fails without it.
 - **Before every commit, run `pre-commit run --all-files` and `make compile`
   yourself.** Commits made with `git-commit-api` (the required agent commit
   path) are created through the GitHub API, so the local git pre-commit /

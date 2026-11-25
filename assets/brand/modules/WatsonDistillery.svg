@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" role="img" aria-label="CorpoBiz, Watson Distillery">
+<title>CorpoBiz, Watson Distillery</title>
+<defs>
+<clipPath id="gl1"><rect x="0" y="29" width="120" height="5"/></clipPath>
+<clipPath id="gl2"><rect x="0" y="85" width="120" height="4"/></clipPath>
+<filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1280" height="720" fill="#12111b"/>
+<polygon points="60,32 1248,32 1248,660 1220,688 32,688 32,60" fill="none" stroke="#8f8ba8" stroke-width="2" opacity=".45"/>
+<rect x="60" y="30" width="54" height="5" fill="#fcee0a"/>
+<rect x="1166" y="685" width="54" height="5" fill="#fcee0a"/>
+<g transform="translate(0 0)">
+<g transform="translate(480 82) scale(2.5)" filter="url(#glow)">
+<path d="M100 24 L40 24 L22 42 L22 78 L40 96 L100 96 L100 80 L46 80 L38 72 L38 48 L46 40 L100 40 Z" fill="#fcee0a"/>
+<polygon points="60,10 68,10 68,110 60,110" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><polygon points="60,10 68,10 68,110 60,110" fill="#2de2e6"/>
+<rect x="58" y="4" width="12" height="12" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><rect x="58" y="4" width="12" height="12" fill="#2de2e6"/>
+<polygon points="64,47 77,60 64,73 51,60" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><polygon points="64,47 77,60 64,73 51,60" fill="#ff2a6d"/>
+<rect x="58" y="104" width="12" height="12" fill="#12111b" stroke="#12111b" stroke-width="6" stroke-linejoin="miter"/><rect x="58" y="104" width="12" height="12" fill="#fcee0a"/>
+<g clip-path="url(#gl1)"><path d="M100 24 L40 24 L22 42 L22 78 L40 96 L100 96 L100 80 L46 80 L38 72 L38 48 L46 40 L100 40 Z" transform="translate(7 0)" fill="#2de2e6"/></g>
+<g clip-path="url(#gl2)"><path d="M100 24 L40 24 L22 42 L22 78 L40 96 L100 96 L100 80 L46 80 L38 72 L38 48 L46 40 L100 40 Z" transform="translate(-7 0)" fill="#ff2a6d"/></g>
+</g>
+<path transform="translate(260 552) scale(0.13 -0.13)" d="M55 115V585L170 700H512L625 587V480H489V537L442 584H242L191 533V167L242 116H442L489 163V220H625V113L512 0H170Z" fill="#ebe8f5"/>
+<path transform="translate(362.37 552) scale(0.13 -0.13)" d="M55 115V585L170 700H530L645 585V115L530 0H170ZM458 116 509 167V533L458 584H242L191 533V167L242 116Z" fill="#ebe8f5"/>
+<path transform="translate(470.67 552) scale(0.13 -0.13)" d="M615 232V0H479V201L419 268H201V0H65V700H504L611 592V380L543 311ZM201 380H442L477 415V551L442 586H201Z" fill="#ebe8f5"/>
+<path transform="translate(575.68 552) scale(0.13 -0.13)" d="M65 700H504L611 592V347L503 238H201V0H65ZM442 352 477 387V551L442 586H201V352Z" fill="#ebe8f5"/>
+<path transform="translate(676.86 552) scale(0.13 -0.13)" d="M55 115V585L170 700H530L645 585V115L530 0H170ZM458 116 509 167V533L458 584H242L191 533V167L242 116Z" fill="#ebe8f5"/>
+<path transform="translate(785.17 552) scale(0.13 -0.13)" d="M65 700H504L604 600V404L564 363L635 291V108L527 0H65ZM434 407 470 443V551L435 586H198V407ZM458 114 501 157V255L458 298H198V114Z" fill="#fcee0a"/>
+<path transform="translate(889.52 552) scale(0.13 -0.13)" d="M70 700H206V0H70Z" fill="#fcee0a"/>
+<path transform="translate(941.86 552) scale(0.13 -0.13)" d="M35 108 394 584V586H45V700H557V592L198 116V114H557V0H35Z" fill="#fcee0a"/>
+<rect x="260" y="582" width="760" height="2" fill="#8f8ba8" opacity=".4"/>
+<rect x="260" y="579" width="54" height="8" fill="#fcee0a"/>
+<path transform="translate(345.16 640) scale(0.04 -0.04)" d="M35 700H132L235 141H238L396 700H479L633 141H635L736 700H833L691 0H594L439 559H436L274 0H177Z" fill="#ff2a6d"/>
+<path transform="translate(392.68 640) scale(0.04 -0.04)" d="M266 700H362L614 0H515L453 178H176L114 0H15ZM428 259 315 586H313L202 259Z" fill="#ff2a6d"/>
+<path transform="translate(430.64 640) scale(0.04 -0.04)" d="M236 617H25V700H543V617H332V0H236Z" fill="#ff2a6d"/>
+<path transform="translate(466.16 640) scale(0.04 -0.04)" d="M60 97V173H155V128L198 84H427L471 129V273L427 316H159L62 414V603L159 700H461L558 603V526H464V572L420 616H201L157 572V444L201 400H469L566 303V99L467 0H157Z" fill="#ff2a6d"/>
+<path transform="translate(503.8 640) scale(0.04 -0.04)" d="M65 112V588L177 700H507L619 588V112L507 0H177ZM461 84 523 146V554L461 616H223L161 554V146L223 84Z" fill="#ff2a6d"/>
+<path transform="translate(543.96 640) scale(0.04 -0.04)" d="M75 700H165L512 158H514V700H606V0H516L169 542H167V0H75Z" fill="#ff2a6d"/>
+<path transform="translate(606.92 640) scale(0.04 -0.04)" d="M75 700H494L607 587V113L494 0H75ZM449 84 511 146V554L449 616H171V84Z" fill="#ff2a6d"/>
+<path transform="translate(646.6 640) scale(0.04 -0.04)" d="M80 700H176V0H80Z" fill="#ff2a6d"/>
+<path transform="translate(669.64 640) scale(0.04 -0.04)" d="M60 97V173H155V128L198 84H427L471 129V273L427 316H159L62 414V603L159 700H461L558 603V526H464V572L420 616H201L157 572V444L201 400H469L566 303V99L467 0H157Z" fill="#ff2a6d"/>
+<path transform="translate(707.28 640) scale(0.04 -0.04)" d="M236 617H25V700H543V617H332V0H236Z" fill="#ff2a6d"/>
+<path transform="translate(742.8 640) scale(0.04 -0.04)" d="M80 700H176V0H80Z" fill="#ff2a6d"/>
+<path transform="translate(765.84 640) scale(0.04 -0.04)" d="M75 700H171V83H525V0H75Z" fill="#ff2a6d"/>
+<path transform="translate(800.44 640) scale(0.04 -0.04)" d="M75 700H171V83H525V0H75Z" fill="#ff2a6d"/>
+<path transform="translate(835.04 640) scale(0.04 -0.04)" d="M75 700H545V616H171V393H516V310H171V84H545V0H75Z" fill="#ff2a6d"/>
+<path transform="translate(871.44 640) scale(0.04 -0.04)" d="M589 220V0H493V196L410 285H171V0H75V700H488L585 603V385L508 308ZM171 367H445L490 411V574L445 618H171Z" fill="#ff2a6d"/>
+<path transform="translate(910.6 640) scale(0.04 -0.04)" d="M255 290 10 700H114L302 378H304L492 700H596L351 290V0H255Z" fill="#ff2a6d"/>
+</g>
+</svg>

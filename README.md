@@ -85,7 +85,8 @@ below.)
 Add a new folder under `modules/` (Title-Case business name) with a class
 extending `BizModule`, self-registering via the same `@wrapMethod
 (ScriptedPuppet) OnGameAttached` pattern every existing module uses — see
-any of the four current modules for the shape. Staff spawning, hostile
+any of the four current modules for the shape. Then run `make logos` to
+generate its logo card (see [BRAND.md](BRAND.md)). Staff spawning, hostile
 cleanup, and the terminal UI all pick it up automatically with no other
 changes, since they only ever talk to modules through the `BizModule`
 interface, and `make deploy`/`make compile` already loop over every
